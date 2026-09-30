@@ -3,6 +3,7 @@
 from app.models.activity import ActivityLog
 from app.models.ai import AIConversation, AIMessage
 from app.models.chat import Channel, ChannelMember, Message, MessageReaction
+from app.models.device import DeviceToken
 from app.models.document import Document
 from app.models.meeting import Decision, Meeting, MeetingParticipant
 from app.models.notification import Notification
@@ -19,6 +20,7 @@ __all__ = [
     "ChannelMember",
     "ChecklistItem",
     "Decision",
+    "DeviceToken",
     "Document",
     "Meeting",
     "MeetingParticipant",

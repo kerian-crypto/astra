@@ -24,7 +24,7 @@ os.environ.pop("AI_BASE_URL", None)
 
 from alembic.config import Config  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
-from sqlalchemy import text  # noqa: E402
+from sqlalchemy import delete, text  # noqa: E402
 from sqlalchemy.orm import Session  # noqa: E402
 
 from alembic import command  # noqa: E402
@@ -32,7 +32,7 @@ from app.core.config import get_settings  # noqa: E402
 from app.db.base import Base  # noqa: E402
 from app.db.session import get_engine, get_session_factory  # noqa: E402
 from app.main import create_app  # noqa: E402
-from app.models import User  # noqa: E402
+from app.models import Notification, User  # noqa: E402
 from app.models.enums import AccessLevel  # noqa: E402
 from app.schemas.user import UserCreate  # noqa: E402
 from app.services import user_service  # noqa: E402
@@ -131,7 +131,7 @@ def auth_headers(login: Callable[[User], dict]) -> Callable[[User], dict[str, st
 
 
 @pytest.fixture
-def team(client, make_user, auth_headers) -> dict:
+def team(client, db, make_user, auth_headers) -> dict:
     """Projet créé par un manager (lead), avec contributeur, lecteur et externe.
 
     `team["h"][role]` donne les en-têtes d'authentification de chaque rôle.
@@ -149,4 +149,34 @@ def team(client, make_user, auth_headers) -> dict:
             headers=headers["lead"],
             json={"role": role},
         )
+    # Les tests partent d'une boîte vide (sans les « ajouté au projet »).
+    db.execute(delete(Notification))
+    db.commit()
     return {"project": project, **members, "h": headers}
+
+
+class RecordingPushSink:
+    """Remplace Firebase : garde les push programmés au lieu de les envoyer."""
+
+    def __init__(self) -> None:
+        self.sent: list[tuple[frozenset, object]] = []
+
+    def submit(self, user_ids: frozenset, message: object) -> None:
+        self.sent.append((user_ids, message))
+
+    def to(self, user: User) -> list:
+        return [message for user_ids, message in self.sent if user.id in user_ids]
+
+    def types_to(self, user: User) -> list[str]:
+        return [message.type for message in self.to(user)]
+
+
+@pytest.fixture
+def pushes(client: TestClient) -> Iterator[RecordingPushSink]:
+    """Après `client` : le démarrage de l'app désactive le push (pas de Firebase)."""
+    from app.push import dispatcher
+
+    sink = RecordingPushSink()
+    dispatcher.configure(sink)
+    yield sink
+    dispatcher.configure(None)

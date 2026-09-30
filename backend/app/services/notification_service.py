@@ -1,4 +1,5 @@
 import uuid
+from collections.abc import Iterable
 from datetime import UTC, datetime
 
 from sqlalchemy import func, select, update
@@ -40,6 +41,31 @@ def notify(
     )
     db.add(notification)
     return notification
+
+
+def notify_many(
+    db: Session,
+    *,
+    user_ids: Iterable[uuid.UUID],
+    actor: User | None,
+    kind: NotificationKind,
+    title: str,
+    entity_type: str,
+    entity_id: uuid.UUID,
+    body: str | None = None,
+) -> None:
+    """Une notification par destinataire distinct, l'auteur exclu."""
+    for user_id in dict.fromkeys(user_ids):
+        notify(
+            db,
+            user_id=user_id,
+            actor=actor,
+            kind=kind,
+            title=title,
+            entity_type=entity_type,
+            entity_id=entity_id,
+            body=body,
+        )
 
 
 def list_for_user(

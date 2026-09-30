@@ -1,13 +1,15 @@
 import uuid
+from collections.abc import Iterable
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.models import Project, ProjectMember, User
-from app.models.enums import ProjectRole, ProjectStatus
+from app.models.enums import NotificationKind, ProjectRole, ProjectStatus
 from app.schemas.project import ProjectCreate, ProjectUpdate
-from app.services import activity_service, permissions
+from app.services import activity_service, notification_service, permissions
 from app.services.errors import ConflictError, NotFoundError, PermissionDeniedError
+from app.services.labels import PROJECT_STATUS_LABELS
 
 # Volontairement identique pour « inexistant » et « non autorisé » :
 # un membre ne doit pas pouvoir deviner l'existence d'un projet confidentiel.
@@ -78,7 +80,27 @@ def build_project(db: Session, creator: User, data: ProjectCreate) -> Project:
     db.add(project)
     db.flush()
     _record(db, creator, project.id, "created", {"name": project.name})
+    notify_added_members(db, creator, project, members)
     return project
+
+
+def notify_added_members(
+    db: Session, actor: User, project: Project, user_ids: Iterable[uuid.UUID]
+) -> None:
+    notification_service.notify_many(
+        db,
+        user_ids=user_ids,
+        actor=actor,
+        kind=NotificationKind.PROJECT_ADDED,
+        title=f"{actor.full_name} vous a ajouté au projet « {project.name} »",
+        body=project.description,
+        entity_type="project",
+        entity_id=project.id,
+    )
+
+
+def member_ids(project: Project) -> list[uuid.UUID]:
+    return [membership.user_id for membership in project.memberships]
 
 
 def _record(
@@ -102,6 +124,17 @@ def update_project(db: Session, actor: User, project: Project, data: ProjectUpda
         setattr(project, field, value)
     if delta:
         _record(db, actor, project.id, "updated", delta)
+    if "status" in delta:
+        notification_service.notify_many(
+            db,
+            user_ids=member_ids(project),
+            actor=actor,
+            kind=NotificationKind.PROJECT_STATUS,
+            title=f"Projet « {project.name} » : {PROJECT_STATUS_LABELS[project.status]}",
+            body=f"Statut modifié par {actor.full_name}",
+            entity_type="project",
+            entity_id=project.id,
+        )
     db.commit()
     return project
 
@@ -134,6 +167,7 @@ def upsert_member(
     if membership is None:
         membership = ProjectMember(project_id=project.id, user_id=user_id, role=role)
         db.add(membership)
+        notify_added_members(db, actor, project, [user_id])
     else:
         is_demoting_lead = membership.role == ProjectRole.LEAD and role != ProjectRole.LEAD
         if is_demoting_lead and _count_leads(db, project.id) <= 1:

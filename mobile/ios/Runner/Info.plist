@@ -72,5 +72,9 @@
 	<string>Astra Hub utilise l'appareil photo pour partager des photos et vidéos dans le chat.</string>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Astra Hub accède à vos photos et vidéos pour les partager dans le chat.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

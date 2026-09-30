@@ -22,4 +22,16 @@ abstract final class Routes {
   static String chat(String channelId) => '$messages/$channelId';
   static String meeting(String id) => '$meetings/$id';
   static String task(String id) => '/tasks/$id';
+
+  /// Écran d'une entité ciblée par une notification (liste ou push).
+  /// `null` : rien à ouvrir (ex. réunion supprimée).
+  static String? forEntity(String entityType, String entityId) => switch (entityType) {
+    'task' => task(entityId),
+    'meeting' => meeting(entityId),
+    'channel' => chat(entityId),
+    'project' => project(entityId),
+    'user' => registrations,
+    'ai_conversation' => ai,
+    _ => null,
+  };
 }

@@ -22,14 +22,14 @@ def build_project_from_plan(db: Session, actor: User, plan: ProjectPlan) -> Proj
         ),
     )
     existing = {m.user_id for m in project.memberships}
-    for user_id in dict.fromkeys(plan.member_ids):
-        if user_id in existing:
-            continue
+    added = [user_id for user_id in dict.fromkeys(plan.member_ids) if user_id not in existing]
+    for user_id in added:
         user = db.get(User, user_id)
         if user is None or not user.is_active:
             raise NotFoundError("Membre introuvable.")
         project.memberships.append(ProjectMember(user_id=user_id, role=ProjectRole.CONTRIBUTOR))
     db.flush()
+    project_service.notify_added_members(db, actor, project, added)
 
     for index, planned_phase in enumerate(plan.phases):
         phase = phase_service.build_phase(

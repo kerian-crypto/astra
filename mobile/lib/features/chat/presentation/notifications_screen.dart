@@ -13,19 +13,22 @@ import 'package:astra_hub/features/home/data/work.dart';
 class NotificationsScreen extends ConsumerWidget {
   const NotificationsScreen({super.key});
 
-  static String? routeFor(AppNotification n) => switch (n.entityType) {
-    'task' => Routes.task(n.entityId),
-    'meeting' => Routes.meeting(n.entityId),
-    'channel' => Routes.chat(n.entityId),
-    'project' => Routes.project(n.entityId),
-    'user' => Routes.registrations,
-    _ => null,
-  };
+  static String? routeFor(AppNotification n) => Routes.forEntity(n.entityType, n.entityId);
 
   IconData _icon(NotificationKind kind) => switch (kind) {
     NotificationKind.mention => Icons.alternate_email,
     NotificationKind.taskAssigned => Icons.assignment_ind_outlined,
+    NotificationKind.taskStatus => Icons.published_with_changes,
+    NotificationKind.taskComment => Icons.comment_outlined,
+    NotificationKind.projectAdded => Icons.create_new_folder_outlined,
+    NotificationKind.projectStatus => Icons.flag_outlined,
     NotificationKind.meetingInvite => Icons.event_outlined,
+    NotificationKind.meetingUpdated => Icons.edit_calendar_outlined,
+    NotificationKind.meetingCancelled => Icons.event_busy_outlined,
+    NotificationKind.decisionProposed => Icons.how_to_vote_outlined,
+    NotificationKind.decisionReviewed => Icons.gavel_outlined,
+    NotificationKind.documentAdded => Icons.description_outlined,
+    NotificationKind.channelAdded => Icons.group_add_outlined,
     NotificationKind.registrationRequest => Icons.person_add_alt,
     NotificationKind.other => Icons.notifications_outlined,
   };

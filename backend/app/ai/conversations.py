@@ -25,6 +25,8 @@ from app.core.config import Settings
 from app.db.base import utcnow
 from app.models import AIConversation, AIMessage, User
 from app.models.enums import AIMessageStatus, AIRole
+from app.push import hooks as push_hooks
+from app.push.message import AI_REPLY_TYPE, PushMessage
 from app.schemas.ai import (
     AIConversationDetail,
     AIConversationSummary,
@@ -222,8 +224,10 @@ def generate_reply(
             db, llm, settings, reply, today, utc_offset_minutes
         )
         conversation_id = reply.conversation_id
+        conversation = db.get(AIConversation, conversation_id)
+        owner_id, title = conversation.user_id, conversation.title
         db.rollback()  # termine la lecture ; les écritures ci-dessous sont ciblées
-        db.execute(
+        stored = db.execute(
             update(AIMessage)
             .where(AIMessage.id == reply_id, AIMessage.status == AIMessageStatus.PENDING)
             .values(
@@ -239,7 +243,31 @@ def generate_reply(
             .where(AIConversation.id == conversation_id)
             .values(updated_at=utcnow())
         )
+        if stored.rowcount:
+            _push_reply(db, owner_id, conversation_id, title, status)
         db.commit()
+
+
+def _push_reply(
+    db: Session,
+    owner_id: uuid.UUID,
+    conversation_id: uuid.UUID,
+    title: str,
+    status: AIMessageStatus,
+) -> None:
+    """Le membre a souvent quitté l'app pendant la génération (CPU)."""
+    headline = "Ronda a répondu" if status == AIMessageStatus.DONE else "Ronda n'a pas pu répondre"
+    push_hooks.enqueue(
+        db,
+        {owner_id},
+        PushMessage(
+            title=headline,
+            body=title,
+            type=AI_REPLY_TYPE,
+            entity_type="ai_conversation",
+            entity_id=conversation_id,
+        ),
+    )
 
 
 def fail_interrupted(db: Session) -> int:

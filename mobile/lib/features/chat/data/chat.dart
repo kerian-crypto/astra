@@ -152,7 +152,31 @@ class ChatMessage {
   String get preview => body.isNotEmpty ? body : attachment?.label ?? '';
 }
 
-enum NotificationKind { mention, taskAssigned, meetingInvite, registrationRequest, other }
+enum NotificationKind {
+  mention('mention'),
+  taskAssigned('task_assigned'),
+  taskStatus('task_status'),
+  taskComment('task_comment'),
+  projectAdded('project_added'),
+  projectStatus('project_status'),
+  meetingInvite('meeting_invite'),
+  meetingUpdated('meeting_updated'),
+  meetingCancelled('meeting_cancelled'),
+  decisionProposed('decision_proposed'),
+  decisionReviewed('decision_reviewed'),
+  documentAdded('document_added'),
+  channelAdded('channel_added'),
+  registrationRequest('registration_request'),
+  other('');
+
+  const NotificationKind(this.wire);
+
+  /// Valeur envoyée par l'API.
+  final String wire;
+
+  static NotificationKind parse(Object? value) =>
+      values.firstWhere((kind) => kind.wire == value && kind != other, orElse: () => other);
+}
 
 class AppNotification {
   const AppNotification({
@@ -168,13 +192,7 @@ class AppNotification {
 
   factory AppNotification.fromJson(Json json) => AppNotification(
     id: json['id'] as String,
-    kind: switch (json['kind']) {
-      'mention' => NotificationKind.mention,
-      'task_assigned' => NotificationKind.taskAssigned,
-      'meeting_invite' => NotificationKind.meetingInvite,
-      'registration_request' => NotificationKind.registrationRequest,
-      _ => NotificationKind.other,
-    },
+    kind: NotificationKind.parse(json['kind']),
     title: json['title'] as String,
     body: json['body'] as String?,
     entityType: json['entity_type'] as String,

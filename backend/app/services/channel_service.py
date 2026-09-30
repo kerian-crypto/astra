@@ -7,9 +7,14 @@ from sqlalchemy.orm import Session
 
 from app.core.storage import LocalFileStorage
 from app.models import Channel, ChannelMember, Message, Project, ProjectMember, User
-from app.models.enums import AccessLevel, ChannelKind, ProjectRole
+from app.models.enums import AccessLevel, ChannelKind, NotificationKind, ProjectRole
 from app.schemas.chat import ChannelCreate, ChannelPublic, ChannelUpdate
-from app.services import permissions, project_service, registration_service
+from app.services import (
+    notification_service,
+    permissions,
+    project_service,
+    registration_service,
+)
 from app.services.errors import ConflictError, NotFoundError, PermissionDeniedError, ServiceError
 
 CHANNEL_NOT_FOUND = "Conversation introuvable."
@@ -207,8 +212,10 @@ def create_channel(db: Session, user: User, data: ChannelCreate) -> Channel:
     db.add(channel)
     db.flush()
     if data.kind == ChannelKind.PRIVATE:
-        for member in _active_users(db, set(data.member_ids) | {user.id}):
+        members = _active_users(db, set(data.member_ids) | {user.id})
+        for member in members:
             db.add(ChannelMember(channel_id=channel.id, user_id=member.id))
+        _notify_added(db, user, channel, [member.id for member in members])
     db.commit()
     return channel
 
@@ -290,6 +297,19 @@ def _membership(db: Session, channel_id: uuid.UUID, user_id: uuid.UUID) -> Chann
     return db.get(ChannelMember, {"channel_id": channel_id, "user_id": user_id})
 
 
+def _notify_added(db: Session, actor: User, channel: Channel, member_ids: list[uuid.UUID]) -> None:
+    notification_service.notify_many(
+        db,
+        user_ids=member_ids,
+        actor=actor,
+        kind=NotificationKind.CHANNEL_ADDED,
+        title=f"{actor.full_name} vous a ajouté au groupe #{channel.name}",
+        body=channel.description,
+        entity_type="channel",
+        entity_id=channel.id,
+    )
+
+
 def add_member(db: Session, user: User, channel: Channel, member_id: uuid.UUID) -> None:
     if channel.kind != ChannelKind.PRIVATE or not can_manage(db, user, channel):
         raise PermissionDeniedError("Vous ne pouvez pas ajouter de membre à ce canal.")
@@ -297,8 +317,11 @@ def add_member(db: Session, user: User, channel: Channel, member_id: uuid.UUID) 
     membership = _membership(db, channel.id, member_id)
     if membership is None:
         db.add(ChannelMember(channel_id=channel.id, user_id=member_id))
+    elif membership.is_member:
+        return
     else:
         membership.is_member = True
+    _notify_added(db, user, channel, [member_id])
     db.commit()
 
 

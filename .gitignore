@@ -61,3 +61,10 @@ htmlcov/
 
 # APK compilée pour distribution (flutter build apk)
 /astra_hub.apk
+
+# Firebase : compte de service (secret) et configurations des applications
+infra/secrets/*
+!infra/secrets/.gitkeep
+*firebase-adminsdk*.json
+mobile/android/app/google-services.json
+mobile/ios/Runner/GoogleService-Info.plist

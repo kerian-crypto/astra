@@ -223,3 +223,14 @@ def test_long_first_question_gives_a_short_title(client, make_user, auth_headers
 
     assert len(title) <= 80
     assert title.endswith("…")
+
+
+def test_finished_reply_is_pushed_to_its_owner(client, make_user, auth_headers, llm, pushes):
+    owner = make_user()
+    llm.replies = ["Voici le point."]
+
+    conversation = _ask(client, auth_headers(owner), "Où en est MarketCM ?").json()
+
+    (push,) = pushes.to(owner)
+    assert (push.type, push.title) == ("ai_reply", "Ronda a répondu")
+    assert (push.entity_type, str(push.entity_id)) == ("ai_conversation", conversation["id"])

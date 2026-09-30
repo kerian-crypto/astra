@@ -6,9 +6,15 @@ from sqlalchemy.orm import Session
 
 from app.core.storage import FileTooLargeError, LocalFileStorage
 from app.models import Document, Project, User
-from app.models.enums import DocumentKind, ProjectRole
+from app.models.enums import DocumentKind, NotificationKind, ProjectRole
 from app.schemas.document import DocumentPublic
-from app.services import activity_service, file_types, permissions, project_service
+from app.services import (
+    activity_service,
+    file_types,
+    notification_service,
+    permissions,
+    project_service,
+)
 from app.services.errors import NotFoundError, PermissionDeniedError, ServiceError
 
 DOCUMENT_NOT_FOUND = "Document introuvable."
@@ -88,7 +94,7 @@ def upload(
     source: BinaryIO,
     max_bytes: int,
 ) -> Document:
-    _check_can_upload(db, user, project_id)
+    project = _check_can_upload(db, user, project_id)
     file_type = file_types.resolve(filename)
     if file_type is None:
         allowed = ", ".join(sorted(file_types.FILE_TYPES))
@@ -128,6 +134,17 @@ def upload(
             action="uploaded",
             changes={"title": document.title},
         )
+        if project is not None:
+            notification_service.notify_many(
+                db,
+                user_ids=project_service.member_ids(project),
+                actor=user,
+                kind=NotificationKind.DOCUMENT_ADDED,
+                title=f"Nouveau document dans « {project.name} »",
+                body=f"{document.title} · ajouté par {user.full_name}",
+                entity_type="project",
+                entity_id=project.id,
+            )
         db.commit()
     except Exception:
         db.rollback()

@@ -4,6 +4,15 @@ plugins {
     id("dev.flutter.flutter-gradle-plugin")
 }
 
+// Notifications push : actives seulement avec le fichier de configuration
+// Firebase du projet Astra (non versionné, voir docs/push-notifications.md).
+// Sans lui, l'application se compile et fonctionne sans push.
+if (file("google-services.json").exists()) {
+    apply(plugin = "com.google.gms.google-services")
+} else {
+    logger.warn("google-services.json absent : notifications push désactivées.")
+}
+
 android {
     namespace = "com.astra.astra_hub"
     compileSdk = flutter.compileSdkVersion

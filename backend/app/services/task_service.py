@@ -15,7 +15,7 @@ from app.models import (
     TaskDependency,
     User,
 )
-from app.models.enums import NotificationKind, ProjectRole, TaskStatus
+from app.models.enums import AccessLevel, NotificationKind, ProjectRole, TaskStatus
 from app.schemas.task import (
     ChecklistItemCreate,
     ChecklistItemUpdate,
@@ -24,6 +24,7 @@ from app.schemas.task import (
 )
 from app.services import activity_service, notification_service, project_service
 from app.services.errors import ConflictError, NotFoundError, ServiceError
+from app.services.labels import TASK_STATUS_LABELS
 
 TASK_NOT_FOUND = "Tâche introuvable."
 ENTITY = "task"
@@ -145,6 +146,45 @@ def _notify_assignee(db: Session, actor: User, task: Task) -> None:
     )
 
 
+def _with_project_access(
+    db: Session, project_id: uuid.UUID, user_ids: Iterable[uuid.UUID | None]
+) -> list[uuid.UUID]:
+    """Ne garde que les membres qui voient encore le projet : un ancien
+    membre ne reçoit plus rien sur ses tâches."""
+    candidates = {user_id for user_id in user_ids if user_id is not None}
+    if not candidates:
+        return []
+    allowed = set(
+        db.scalars(
+            select(User.id).where(
+                User.id.in_(candidates),
+                User.is_active.is_(True),
+                (User.access_level == AccessLevel.ADMIN)
+                | User.id.in_(
+                    select(ProjectMember.user_id).where(ProjectMember.project_id == project_id)
+                ),
+            )
+        )
+    )
+    return [user_id for user_id in candidates if user_id in allowed]
+
+
+def _notify_status(db: Session, actor: User, task: Task, *, skip: uuid.UUID | None) -> None:
+    """Prévient l'assigné et le créateur ; `skip` vient d'être notifié de
+    son attribution."""
+    recipients = [uid for uid in (task.assignee_id, task.created_by_id) if uid != skip]
+    notification_service.notify_many(
+        db,
+        user_ids=_with_project_access(db, task.project_id, recipients),
+        actor=actor,
+        kind=NotificationKind.TASK_STATUS,
+        title=f"{actor.full_name} a passé une tâche en « {TASK_STATUS_LABELS[task.status]} »",
+        body=task.title,
+        entity_type="task",
+        entity_id=task.id,
+    )
+
+
 def create_task(db: Session, actor: User, project: Project, data: TaskCreate) -> Task:
     task = build_task(db, actor, project, data)
     db.commit()
@@ -229,6 +269,8 @@ def update_task(db: Session, actor: User, task: Task, data: TaskUpdate) -> Task:
         setattr(task, field, value)
     if "assignee_id" in delta:
         _notify_assignee(db, actor, task)
+    if "status" in delta:
+        _notify_status(db, actor, task, skip=task.assignee_id if "assignee_id" in delta else None)
     delta.pop("completed_at", None)
     if delta:
         action = "status_changed" if set(delta) == {"status"} else "updated"
@@ -334,9 +376,23 @@ def list_comments(db: Session, task: Task) -> list[TaskComment]:
 
 
 def add_comment(db: Session, author: User, task: Task, body: str) -> TaskComment:
+    earlier_authors = db.scalars(
+        select(TaskComment.author_id).where(TaskComment.task_id == task.id).distinct()
+    )
+    followers = [task.assignee_id, task.created_by_id, *earlier_authors]
     comment = TaskComment(task_id=task.id, author_id=author.id, body=body.strip())
     db.add(comment)
     db.flush()
+    notification_service.notify_many(
+        db,
+        user_ids=_with_project_access(db, task.project_id, followers),
+        actor=author,
+        kind=NotificationKind.TASK_COMMENT,
+        title=f"{author.full_name} a commenté « {task.title} »",
+        body=comment.body,
+        entity_type="task",
+        entity_id=task.id,
+    )
     activity_service.record(
         db,
         actor=author,

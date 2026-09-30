@@ -70,7 +70,7 @@ def update_meeting(
 @router.delete("/{meeting_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_meeting(meeting_id: uuid.UUID, user: CurrentUser, db: DbSession) -> None:
     meeting = meeting_service.get_accessible_meeting(db, user, meeting_id, write=True)
-    meeting_service.delete_meeting(db, meeting)
+    meeting_service.delete_meeting(db, user, meeting)
 
 
 @router.post(

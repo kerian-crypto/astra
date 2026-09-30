@@ -60,6 +60,12 @@ simplement désactivée et le reste de l'application fonctionne.
 Sur CPU, compter ~15 s pour une réponse courte et plusieurs minutes pour un plan
 de projet complet (`AI_TIMEOUT_SECONDS`, 600 par défaut).
 
+### Notifications push (optionnel)
+
+Firebase Cloud Messaging : messages, projets, tâches, réunions, décisions,
+documents… Mise en place : [docs/push-notifications.md](docs/push-notifications.md).
+Sans configuration, le push est simplement désactivé.
+
 ### 3. Application mobile
 
 ```bash

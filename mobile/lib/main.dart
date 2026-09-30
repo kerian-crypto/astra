@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 
 import 'package:astra_hub/core/config/app_config.dart';
+import 'package:astra_hub/core/push/push_messaging.dart';
+import 'package:astra_hub/core/push/push_service.dart';
 import 'package:astra_hub/core/router/app_router.dart';
 import 'package:astra_hub/core/theme/astra_theme.dart';
 import 'package:astra_hub/features/ai/presentation/ronda_overlay.dart';
@@ -15,7 +17,13 @@ Future<void> main() async {
   }
   WidgetsFlutterBinding.ensureInitialized();
   await initializeDateFormatting('fr');
-  runApp(const ProviderScope(child: AstraApp()));
+  final messaging = await FirebasePushMessaging.initialize();
+  runApp(
+    ProviderScope(
+      overrides: [pushMessagingProvider.overrideWithValue(messaging)],
+      child: const AstraApp(),
+    ),
+  );
 }
 
 class AstraApp extends ConsumerWidget {

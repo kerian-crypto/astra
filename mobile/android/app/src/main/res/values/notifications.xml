@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Identifiants partagés avec le serveur (app/push/message.py). -->
+    <string name="notification_channel_messages" translatable="false">messages</string>
+    <string name="notification_channel_activity" translatable="false">activity</string>
+    <string name="notification_channel_messages_name">Messages</string>
+    <string name="notification_channel_messages_description">Messages et mentions du chat</string>
+    <string name="notification_channel_activity_name">Activité</string>
+    <string name="notification_channel_activity_description">Projets, tâches, réunions, décisions et documents</string>
+    <color name="notification_accent">#3D7BFF</color>
+</resources>

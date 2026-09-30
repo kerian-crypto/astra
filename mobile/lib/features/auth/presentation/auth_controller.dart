@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:astra_hub/core/network/api_client.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
+import 'package:astra_hub/core/push/push_service.dart';
 import 'package:astra_hub/features/members/data/member.dart';
 import 'package:astra_hub/features/auth/data/auth_repository.dart';
 
@@ -16,10 +17,11 @@ class AuthController extends AsyncNotifier<Member?> {
 
   @override
   Future<Member?> build() async {
-    final subscription = ref
-        .watch(sessionExpiredProvider)
-        .stream
-        .listen((_) => state = const AsyncData(null));
+    final subscription = ref.watch(sessionExpiredProvider).stream.listen((_) {
+      // L'appareil ne doit plus recevoir les notifications de ce compte.
+      unawaited(ref.read(pushServiceProvider).forgetDevice());
+      state = const AsyncData(null);
+    });
     ref.onDispose(subscription.cancel);
 
     if (!await _repository.hasSession()) return null;
@@ -39,6 +41,7 @@ class AuthController extends AsyncNotifier<Member?> {
   }
 
   Future<void> logout() async {
+    await ref.read(pushServiceProvider).unregister();
     await _repository.logout();
     state = const AsyncData(null);
   }

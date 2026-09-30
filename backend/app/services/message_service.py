@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 from app.core.storage import FileTooLargeError, LocalFileStorage
 from app.models import Channel, Message, MessageReaction, User
 from app.models.enums import AttachmentKind, ChannelKind, NotificationKind
+from app.push import hooks as push_hooks
+from app.push.message import MESSAGE_TYPE, PushChannel, PushMessage
 from app.schemas.chat import AttachmentPublic, MessageCreate, MessagePublic, ReactionSummary
 from app.services import channel_service, file_types, notification_service, permissions
 from app.services.errors import ConflictError, NotFoundError, PermissionDeniedError, ServiceError
@@ -100,6 +102,31 @@ def _channel_label(channel: Channel) -> str:
     return "un message direct" if channel.kind == ChannelKind.DIRECT else f"#{channel.name}"
 
 
+def _push_new_message(
+    db: Session, author: User, channel: Channel, message: Message, *, skip: set[uuid.UUID]
+) -> None:
+    """Push à toute l'audience du canal ; `skip` (mentionnés) a déjà reçu
+    une notification plus précise."""
+    title = (
+        author.full_name
+        if channel.kind == ChannelKind.DIRECT
+        else f"{author.full_name} · #{channel.name}"
+    )
+    body = message.body or attachment_label(message) or ""
+    push_hooks.enqueue(
+        db,
+        channel_service.recipients(db, channel) - skip - {author.id},
+        PushMessage(
+            title=title,
+            body=notification_service.preview(body) if body else None,
+            type=MESSAGE_TYPE,
+            entity_type="channel",
+            entity_id=channel.id,
+            channel=PushChannel.MESSAGES,
+        ),
+    )
+
+
 def _check_reply(db: Session, channel: Channel, reply_to_id: uuid.UUID | None) -> None:
     if reply_to_id is not None:
         parent = db.get(Message, reply_to_id)
@@ -135,6 +162,7 @@ def post_message(db: Session, user: User, channel: Channel, data: MessageCreate)
             entity_type="channel",
             entity_id=channel.id,
         )
+    _push_new_message(db, user, channel, message, skip=set(mentioned))
     db.commit()
     channel_service.mark_read(db, user, channel)
     return message
@@ -192,6 +220,7 @@ def post_attachment(
         attachment_duration_ms=duration_ms,
     )
     db.add(message)
+    _push_new_message(db, user, channel, message, skip=set())
     try:
         db.commit()
     except Exception:

@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     # Clé d'API de llama-server (--api-key) quand Ronda est sur un autre serveur.
     AI_API_KEY: str | None = None
 
+    # Notifications push : chemin du fichier JSON du compte de service
+    # Firebase (secret, monté dans le conteneur). Vide = push désactivé.
+    FIREBASE_CREDENTIALS_FILE: str | None = None
+
     BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = []
 
     @field_validator("BACKEND_CORS_ORIGINS", mode="before")

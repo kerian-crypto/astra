@@ -4,14 +4,15 @@ from datetime import UTC, datetime
 from sqlalchemy import Select, or_, select
 from sqlalchemy.orm import Session
 
-from app.models import Decision, Meeting, Project, Task, User
-from app.models.enums import DecisionStatus, ProjectRole
+from app.models import Decision, Meeting, Project, ProjectMember, Task, User
+from app.models.enums import DecisionStatus, NotificationKind, ProjectRole
 from app.schemas.meeting import DecisionCreate
 from app.schemas.plan import ProjectPlan
 from app.schemas.task import TaskCreate
 from app.services import (
     activity_service,
     meeting_service,
+    notification_service,
     permissions,
     plan_service,
     project_service,
@@ -84,11 +85,49 @@ def _record(db: Session, user: User, decision: Decision, action: str, changes: d
     )
 
 
+def _target(decision: Decision) -> tuple[str, uuid.UUID]:
+    """Écran ouvert depuis la notification : la réunion d'origine, sinon le projet."""
+    if decision.meeting_id is not None:
+        return "meeting", decision.meeting_id
+    return "project", decision.project_id
+
+
+def _reviewer_ids(db: Session, decision: Decision) -> list[uuid.UUID]:
+    """Responsables du projet et organisateur de la réunion (cf. `_can_review`)."""
+    reviewers: list[uuid.UUID] = []
+    if decision.meeting_id is not None:
+        meeting = db.get(Meeting, decision.meeting_id)
+        if meeting is not None:
+            reviewers.append(meeting.created_by_id)
+    if decision.project_id is not None:
+        reviewers.extend(
+            db.scalars(
+                select(ProjectMember.user_id).where(
+                    ProjectMember.project_id == decision.project_id,
+                    ProjectMember.role == ProjectRole.LEAD,
+                )
+            )
+        )
+    return reviewers
+
+
 def _create(db: Session, user: User, data: DecisionCreate, **links: uuid.UUID | None) -> Decision:
     decision = Decision(created_by_id=user.id, **data.model_dump(), **links)
     db.add(decision)
     db.flush()
     _record(db, user, decision, "created", {"title": decision.title})
+    entity_type, entity_id = _target(decision)
+    if entity_id is not None:
+        notification_service.notify_many(
+            db,
+            user_ids=_reviewer_ids(db, decision),
+            actor=user,
+            kind=NotificationKind.DECISION_PROPOSED,
+            title=f"{user.full_name} propose une décision à valider",
+            body=decision.title,
+            entity_type=entity_type,
+            entity_id=entity_id,
+        )
     db.commit()
     return decision
 
@@ -114,6 +153,19 @@ def review(db: Session, user: User, decision: Decision, status: DecisionStatus) 
     decision.validated_by_id = user.id
     decision.validated_at = datetime.now(UTC)
     _record(db, user, decision, "reviewed", {"status": status})
+    entity_type, entity_id = _target(decision)
+    if entity_id is not None:
+        verdict = "validé" if status == DecisionStatus.VALIDATED else "rejeté"
+        notification_service.notify(
+            db,
+            user_id=decision.created_by_id,
+            actor=user,
+            kind=NotificationKind.DECISION_REVIEWED,
+            title=f"{user.full_name} a {verdict} votre décision",
+            body=decision.title,
+            entity_type=entity_type,
+            entity_id=entity_id,
+        )
     db.commit()
     return decision
 

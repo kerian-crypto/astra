@@ -62,8 +62,23 @@ class ChannelKind(StrEnum):
 class NotificationKind(StrEnum):
     MENTION = "mention"
     TASK_ASSIGNED = "task_assigned"
+    TASK_STATUS = "task_status"
+    TASK_COMMENT = "task_comment"
+    PROJECT_ADDED = "project_added"
+    PROJECT_STATUS = "project_status"
     MEETING_INVITE = "meeting_invite"
+    MEETING_UPDATED = "meeting_updated"
+    MEETING_CANCELLED = "meeting_cancelled"
+    DECISION_PROPOSED = "decision_proposed"
+    DECISION_REVIEWED = "decision_reviewed"
+    DOCUMENT_ADDED = "document_added"
+    CHANNEL_ADDED = "channel_added"
     REGISTRATION_REQUEST = "registration_request"
+
+
+class DevicePlatform(StrEnum):
+    ANDROID = "android"
+    IOS = "ios"
 
 
 class DocumentKind(StrEnum):

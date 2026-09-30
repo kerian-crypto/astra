@@ -34,11 +34,15 @@ services:
       AI_BASE_URL: ${AI_BASE_URL:-}
       AI_TIMEOUT_SECONDS: ${AI_TIMEOUT_SECONDS:-600}
       AI_API_KEY: ${AI_API_KEY:-}
+      # Notifications push : compte de service Firebase déposé dans
+      # infra/secrets/ (jamais versionné). Vide = push désactivé.
+      FIREBASE_CREDENTIALS_FILE: ${FIREBASE_CREDENTIALS_FILE:-}
     extra_hosts:
       # Permet au conteneur de joindre un service de l'hôte (Ronda).
       - "host.docker.internal:host-gateway"
     volumes:
       - uploads:/data/uploads
+      - ./secrets:/run/secrets/astra:ro
     ports:
       - "8000:8000"
 

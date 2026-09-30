@@ -1,3 +1,4 @@
+import logging
 from collections.abc import AsyncIterator
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -14,6 +15,7 @@ from app.api.v1 import (
     auth,
     chat,
     decisions,
+    devices,
     documents,
     insights,
     meetings,
@@ -28,8 +30,13 @@ from app.api.v1 import (
 from app.core.config import Settings, get_settings
 from app.core.rate_limit import SlidingWindowRateLimiter
 from app.db.session import get_session_factory
+from app.push import dispatcher as push_dispatcher
+from app.push import hooks as push_hooks
+from app.push.fcm import FcmSender
 from app.realtime import notifications as realtime_notifications
 from app.services.errors import ServiceError
+
+logger = logging.getLogger(__name__)
 
 
 def _service_error_handler(_: Request, exc: Exception) -> JSONResponse:
@@ -51,11 +58,22 @@ def _build_api_router() -> APIRouter:
     router.include_router(decisions.router)
     router.include_router(chat.router)
     router.include_router(notifications.router)
+    router.include_router(devices.router)
     router.include_router(ws.router)
     router.include_router(documents.router)
     router.include_router(insights.router)
     router.include_router(ai.router)
     return router
+
+
+def _start_push(settings: Settings) -> push_dispatcher.PushDispatcher | None:
+    """Firebase configuré mais inutilisable : l'API refuse de démarrer
+    plutôt que de perdre silencieusement toutes les notifications."""
+    if not settings.FIREBASE_CREDENTIALS_FILE:
+        logger.info("Notifications push désactivées (FIREBASE_CREDENTIALS_FILE vide)")
+        return None
+    sender = FcmSender.from_service_account_file(settings.FIREBASE_CREDENTIALS_FILE)
+    return push_dispatcher.PushDispatcher(get_session_factory(), sender)
 
 
 @asynccontextmanager
@@ -65,7 +83,12 @@ async def _lifespan(app: FastAPI) -> AsyncIterator[None]:
     # Réponses ASTRA AI générées hors requête, une à la fois (Ronda sur CPU).
     executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="ronda")
     app.state.ai_jobs = executor
+    push = _start_push(app.state.settings)
+    push_dispatcher.configure(push)
     yield
+    push_dispatcher.configure(None)
+    if push is not None:
+        push.shutdown()
     executor.shutdown(wait=False, cancel_futures=True)
 
 
@@ -81,6 +104,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         redoc_url=None,
         lifespan=_lifespan,
     )
+    app.state.settings = settings
     app.state.login_limiter = SlidingWindowRateLimiter(
         settings.LOGIN_RATE_LIMIT_ATTEMPTS, settings.LOGIN_RATE_LIMIT_WINDOW_SECONDS
     )
@@ -102,6 +126,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         )
 
     realtime_notifications.install()
+    push_hooks.install()
     app.add_exception_handler(ServiceError, _service_error_handler)
     app.include_router(_build_api_router(), prefix=settings.API_V1_STR)
 

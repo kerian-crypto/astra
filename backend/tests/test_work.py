@@ -66,8 +66,8 @@ def test_dashboard_counts_only_visible_projects(client, team):
         "today_tasks": 1,
         "overdue_tasks": 1,
         "upcoming_meetings": 0,
-        # une notification par tâche attribuée
-        "unread_notifications": 2,
+        # une par tâche attribuée, une pour le passage du projet en « Actif »
+        "unread_notifications": 3,
     }
     assert mine["astra"]["active_projects"] == 1
     assert mine["astra"]["overdue_tasks"] == 1

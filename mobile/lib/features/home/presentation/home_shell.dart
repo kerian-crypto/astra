@@ -5,6 +5,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'package:astra_hub/core/network/realtime.dart';
+import 'package:astra_hub/core/push/push_messaging.dart';
+import 'package:astra_hub/core/push/push_service.dart';
 import 'package:astra_hub/core/utils/json.dart';
 import 'package:astra_hub/features/chat/data/chat.dart';
 import 'package:astra_hub/features/chat/data/chat_repository.dart';
@@ -23,6 +25,7 @@ class HomeShell extends ConsumerStatefulWidget {
 
 class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserver {
   StreamSubscription<Json>? _events;
+  StreamSubscription<PushData>? _openedPushes;
   late final RealtimeService _realtime;
 
   @override
@@ -32,12 +35,16 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
     _realtime = ref.read(realtimeServiceProvider);
     _events = _realtime.events.listen(_onEvent);
     _realtime.start();
+    final push = ref.read(pushServiceProvider);
+    unawaited(push.register());
+    _openedPushes = push.openedMessages().listen(_onPushOpened);
   }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     unawaited(_events?.cancel());
+    unawaited(_openedPushes?.cancel());
     unawaited(_realtime.stop());
     super.dispose();
   }
@@ -72,6 +79,16 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
         ..invalidate(notificationsProvider)
         ..invalidate(dashboardProvider);
     }
+  }
+
+  /// Push touché dans la barre de notifications : ouvre l'écran concerné.
+  void _onPushOpened(PushData data) {
+    unawaited(ref.read(pushServiceProvider).markOpened(data));
+    ref
+      ..invalidate(notificationsProvider)
+      ..invalidate(dashboardProvider);
+    final route = routeForPush(data);
+    if (route != null && mounted) unawaited(GoRouter.of(context).push(route));
   }
 
   @override

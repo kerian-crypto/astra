@@ -118,18 +118,67 @@ def _load_participants(db: Session, ids: list[uuid.UUID], organizer: User) -> li
     return users
 
 
+# Changements qui imposent de prévenir les participants.
+_LOGISTICS_FIELDS = {"title", "scheduled_at", "duration_minutes", "location"}
+# Cible d'une notification dont la réunion n'existe plus : pas de navigation.
+DELETED_ENTITY = "deleted"
+
+
+def _when(meeting: Meeting) -> str:
+    return meeting.scheduled_at.strftime("%d/%m/%Y %H:%M UTC")
+
+
 def _invite(db: Session, actor: User, meeting: Meeting, invitees: list[User]) -> None:
-    for invitee in invitees:
-        notification_service.notify(
-            db,
-            user_id=invitee.id,
-            actor=actor,
-            kind=NotificationKind.MEETING_INVITE,
-            title=f"{actor.full_name} vous invite : {meeting.title}",
-            body=meeting.scheduled_at.strftime("%d/%m/%Y %H:%M UTC"),
-            entity_type="meeting",
-            entity_id=meeting.id,
-        )
+    notification_service.notify_many(
+        db,
+        user_ids=[invitee.id for invitee in invitees],
+        actor=actor,
+        kind=NotificationKind.MEETING_INVITE,
+        title=f"{actor.full_name} vous invite : {meeting.title}",
+        body=_when(meeting),
+        entity_type="meeting",
+        entity_id=meeting.id,
+    )
+
+
+def _notify_cancelled(
+    db: Session, actor: User, meeting: Meeting, participant_ids: set[uuid.UUID], entity_type: str
+) -> None:
+    notification_service.notify_many(
+        db,
+        user_ids=participant_ids,
+        actor=actor,
+        kind=NotificationKind.MEETING_CANCELLED,
+        title=f"Réunion annulée : {meeting.title}",
+        body=f"{_when(meeting)} · annulée par {actor.full_name}",
+        entity_type=entity_type,
+        entity_id=meeting.id,
+    )
+
+
+def _notify_changes(
+    db: Session, actor: User, meeting: Meeting, changed: set[str], participant_ids: set[uuid.UUID]
+) -> None:
+    if "status" in changed and meeting.status == MeetingStatus.CANCELLED:
+        _notify_cancelled(db, actor, meeting, participant_ids, "meeting")
+        return
+    if changed & _LOGISTICS_FIELDS:
+        body = _when(meeting) + (f" · {meeting.location}" if meeting.location else "")
+        title = f"{actor.full_name} a modifié la réunion : {meeting.title}"
+    elif "minutes" in changed and meeting.minutes:
+        body, title = None, f"Compte rendu disponible : {meeting.title}"
+    else:
+        return
+    notification_service.notify_many(
+        db,
+        user_ids=participant_ids,
+        actor=actor,
+        kind=NotificationKind.MEETING_UPDATED,
+        title=title,
+        body=body,
+        entity_type="meeting",
+        entity_id=meeting.id,
+    )
 
 
 def create_meeting(db: Session, user: User, data: MeetingCreate) -> Meeting:
@@ -160,14 +209,16 @@ def create_meeting(db: Session, user: User, data: MeetingCreate) -> Meeting:
 def update_meeting(db: Session, user: User, meeting: Meeting, data: MeetingUpdate) -> Meeting:
     changes = data.model_dump(exclude_unset=True, exclude={"participant_ids"})
     delta = activity_service.diff(meeting, changes)
+    previous = {p.id for p in meeting.participants}
     for field, value in changes.items():
         setattr(meeting, field, value)
     if data.participant_ids is not None:
         organizer = db.get(User, meeting.created_by_id)
-        before = {p.id for p in meeting.participants}
         meeting.participants = _load_participants(db, data.participant_ids, organizer)
-        _invite(db, user, meeting, [p for p in meeting.participants if p.id not in before])
+        _invite(db, user, meeting, [p for p in meeting.participants if p.id not in previous])
         delta["participants"] = {"to": len(meeting.participants)}
+    # Les nouveaux invités ont déjà reçu l'invitation à jour.
+    _notify_changes(db, user, meeting, set(delta), previous & {p.id for p in meeting.participants})
     if delta:
         activity_service.record(
             db,
@@ -183,6 +234,9 @@ def update_meeting(db: Session, user: User, meeting: Meeting, data: MeetingUpdat
     return meeting
 
 
-def delete_meeting(db: Session, meeting: Meeting) -> None:
+def delete_meeting(db: Session, user: User, meeting: Meeting) -> None:
+    if meeting.status == MeetingStatus.PLANNED:
+        participant_ids = {p.id for p in meeting.participants}
+        _notify_cancelled(db, user, meeting, participant_ids, DELETED_ENTITY)
     db.delete(meeting)
     db.commit()
