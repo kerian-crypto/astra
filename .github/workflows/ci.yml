@@ -1,0 +1,71 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: astra
+          POSTGRES_PASSWORD: ci-only-password
+          POSTGRES_DB: astra_hub_test
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U astra"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 10
+    env:
+      TEST_DATABASE_URL: postgresql+psycopg://astra:ci-only-password@localhost:5432/astra_hub_test
+    steps:
+      - uses: actions/checkout@v5
+      - uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.13"
+      - run: uv sync --frozen
+      - name: Lint
+        run: |
+          uv run ruff check .
+          uv run ruff format --check .
+      - name: Tests
+        run: uv run pytest --cov --cov-report=term-missing
+      - name: Migrations à jour avec les modèles
+        env:
+          DATABASE_URL: ${{ env.TEST_DATABASE_URL }}
+          SECRET_KEY: ci-only-secret-key-not-used-for-anything-real
+        run: uv run alembic upgrade head && uv run alembic check
+      - name: Image Docker
+        run: docker build -t astra-hub-api:ci .
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: mobile
+    steps:
+      - uses: actions/checkout@v5
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: 3.47.x
+          cache: true
+      - run: flutter pub get
+      - name: Format
+        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Analyse
+        run: flutter analyze --fatal-infos
+      - name: Tests
+        run: flutter test --coverage

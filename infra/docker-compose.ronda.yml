@@ -1,0 +1,13 @@
+# Branche ASTRA AI sur Ronda (llama-server) qui tourne sur CETTE machine en
+# 127.0.0.1:8080. L'API partage alors le réseau de l'hôte (Linux uniquement) :
+# Ronda reste inaccessible depuis le Wi-Fi.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.ronda.yml up -d
+services:
+  api:
+    network_mode: host
+    ports: !reset []
+    extra_hosts: !reset []
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_HOST_PORT:-5432}/${POSTGRES_DB}
+      AI_BASE_URL: ${RONDA_URL:-http://127.0.0.1:8080}

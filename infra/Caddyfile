@@ -1,0 +1,20 @@
+# Certificat HTTPS automatique (Let's Encrypt) pour le domaine de l'API.
+{$DOMAIN} {
+	encode gzip
+	reverse_proxy 127.0.0.1:8000 {
+		header_down -Via
+		header_down -Server
+	}
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "DENY"
+		Referrer-Policy "no-referrer"
+		-Server
+		-Via
+	}
+	request_body {
+		# Pièces jointes du chat (50 Mo) + marge multipart.
+		max_size 55MB
+	}
+}

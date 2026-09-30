@@ -1,0 +1,33 @@
+# Production (instance AWS) : HTTPS par Caddy, API sur le réseau de l'hôte pour
+# joindre Ronda via le tunnel SSH ouvert depuis le PC (127.0.0.1:8080).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+services:
+  api:
+    network_mode: host
+    # Uniquement en local : tout passe par Caddy (HTTPS), jamais directement.
+    command:
+      - sh
+      - -c
+      - alembic upgrade head && exec uvicorn app.main:create_app --factory --host 127.0.0.1 --port 8000 --proxy-headers
+    ports: !reset []
+    extra_hosts: !reset []
+    environment:
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@127.0.0.1:${POSTGRES_HOST_PORT:-5432}/${POSTGRES_DB}
+      AI_BASE_URL: ${AI_BASE_URL:-http://127.0.0.1:8080}
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      DOMAIN: ${DOMAIN:?DOMAIN manquant}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+
+volumes:
+  caddy-data:
+  caddy-config:
