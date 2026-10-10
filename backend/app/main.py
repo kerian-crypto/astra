@@ -14,6 +14,8 @@ from app.api.v1 import (
     ai,
     auth,
     chat,
+    client,
+    clients,
     decisions,
     devices,
     documents,
@@ -22,6 +24,7 @@ from app.api.v1 import (
     notifications,
     projects,
     registration,
+    releases,
     tasks,
     users,
     work,
@@ -63,17 +66,26 @@ def _build_api_router() -> APIRouter:
     router.include_router(documents.router)
     router.include_router(insights.router)
     router.include_router(ai.router)
+    router.include_router(releases.router)
+    # Astra Client : administration (Hub) puis routes de l'application client.
+    router.include_router(clients.build_router())
+    router.include_router(client.build_router())
     return router
 
 
 def _start_push(settings: Settings) -> push_dispatcher.PushDispatcher | None:
     """Firebase configuré mais inutilisable : l'API refuse de démarrer
-    plutôt que de perdre silencieusement toutes les notifications."""
-    if not settings.FIREBASE_CREDENTIALS_FILE:
-        logger.info("Notifications push désactivées (FIREBASE_CREDENTIALS_FILE vide)")
+    plutôt que de perdre silencieusement toutes les notifications.
+    Astra Hub et Astra Client ont chacun leur projet Firebase."""
+    members, clients = settings.FIREBASE_CREDENTIALS_FILE, settings.FIREBASE_CLIENT_CREDENTIALS_FILE
+    if not members and not clients:
+        logger.info("Notifications push désactivées (aucune clé Firebase)")
         return None
-    sender = FcmSender.from_service_account_file(settings.FIREBASE_CREDENTIALS_FILE)
-    return push_dispatcher.PushDispatcher(get_session_factory(), sender)
+    return push_dispatcher.PushDispatcher(
+        get_session_factory(),
+        FcmSender.from_service_account_file(members) if members else None,
+        FcmSender.from_service_account_file(clients) if clients else None,
+    )
 
 
 @asynccontextmanager

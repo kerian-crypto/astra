@@ -4,7 +4,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/realtime.dart';
+import 'package:astra_hub/core/router/routes.dart';
+import 'package:astra_hub/core/widgets/astra_logo.dart';
+import 'package:astra_hub/features/auth/presentation/auth_controller.dart';
 import 'package:astra_hub/core/push/push_messaging.dart';
 import 'package:astra_hub/core/push/push_service.dart';
 import 'package:astra_hub/core/utils/json.dart';
@@ -96,43 +100,85 @@ class _HomeShellState extends ConsumerState<HomeShell> with WidgetsBindingObserv
     final shell = widget.shell;
     final unreadMessages =
         ref.watch(channelsProvider).value?.fold<int>(0, (sum, c) => sum + c.unreadCount) ?? 0;
+    final member = ref.watch(authControllerProvider).value;
+    final destinations = [
+      (Icons.today_outlined, Icons.today, 'Aujourd\'hui', 0),
+      (Icons.folder_outlined, Icons.folder, 'Projets', 0),
+      (Icons.chat_bubble_outline, Icons.chat_bubble, 'Messages', unreadMessages),
+      (Icons.groups_outlined, Icons.groups, 'Réunions', 0),
+      (Icons.person_outline, Icons.person, 'Profil', 0),
+    ];
+    Widget badged(IconData icon, int count) =>
+        Badge(isLabelVisible: count > 0, label: Text('$count'), child: Icon(icon));
+    // Un second tap sur l'onglet courant revient à sa racine.
+    void select(int index) => shell.goBranch(index, initialLocation: index == shell.currentIndex);
+
+    final size = context.windowSize;
+    if (size == WindowSize.compact) {
+      return Scaffold(
+        body: shell,
+        bottomNavigationBar: NavigationBar(
+          selectedIndex: shell.currentIndex,
+          onDestinationSelected: select,
+          destinations: [
+            for (final (icon, selected, label, count) in destinations)
+              NavigationDestination(
+                icon: badged(icon, count),
+                selectedIcon: badged(selected, count),
+                label: label,
+              ),
+          ],
+        ),
+      );
+    }
+
+    // Tablette et grand écran : rail latéral, étendu avec libellés sur grand écran.
+    final extended = size == WindowSize.expanded;
     return Scaffold(
-      body: shell,
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: shell.currentIndex,
-        // Un second tap sur l'onglet courant revient à sa racine.
-        onDestinationSelected: (index) =>
-            shell.goBranch(index, initialLocation: index == shell.currentIndex),
-        destinations: [
-          const NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            selectedIcon: Icon(Icons.today),
-            label: 'Aujourd\'hui',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.folder_outlined),
-            selectedIcon: Icon(Icons.folder),
-            label: 'Projets',
-          ),
-          NavigationDestination(
-            icon: Badge(
-              isLabelVisible: unreadMessages > 0,
-              label: Text('$unreadMessages'),
-              child: const Icon(Icons.chat_bubble_outline),
+      body: Row(
+        children: [
+          NavigationRail(
+            extended: extended,
+            minExtendedWidth: 220,
+            selectedIndex: shell.currentIndex,
+            onDestinationSelected: select,
+            labelType: extended ? NavigationRailLabelType.none : NavigationRailLabelType.all,
+            leading: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20),
+              child: AstraMark(width: extended ? 120 : 44),
             ),
-            selectedIcon: const Icon(Icons.chat_bubble),
-            label: 'Messages',
+            trailing: member?.canCreateProjects ?? false
+                ? Expanded(
+                    child: Align(
+                      alignment: Alignment.bottomCenter,
+                      child: Padding(
+                        padding: const EdgeInsets.only(bottom: 20),
+                        child: extended
+                            ? TextButton.icon(
+                                onPressed: () => context.push(Routes.clients),
+                                icon: const Icon(Icons.storefront_outlined),
+                                label: const Text('Espace clients'),
+                              )
+                            : IconButton(
+                                tooltip: 'Espace clients',
+                                onPressed: () => context.push(Routes.clients),
+                                icon: const Icon(Icons.storefront_outlined),
+                              ),
+                      ),
+                    ),
+                  )
+                : null,
+            destinations: [
+              for (final (icon, selected, label, count) in destinations)
+                NavigationRailDestination(
+                  icon: badged(icon, count),
+                  selectedIcon: badged(selected, count),
+                  label: Text(label),
+                ),
+            ],
           ),
-          const NavigationDestination(
-            icon: Icon(Icons.groups_outlined),
-            selectedIcon: Icon(Icons.groups),
-            label: 'Réunions',
-          ),
-          const NavigationDestination(
-            icon: Icon(Icons.person_outline),
-            selectedIcon: Icon(Icons.person),
-            label: 'Profil',
-          ),
+          const VerticalDivider(width: 1),
+          Expanded(child: shell),
         ],
       ),
     );

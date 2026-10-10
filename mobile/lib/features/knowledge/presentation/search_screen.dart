@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/widgets/async_value_view.dart';
@@ -107,32 +108,35 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
           onSubmitted: _search,
         ),
       ),
-      body: switch (_results) {
-        null => const EmptyState(
-          icon: Icons.search,
-          message: 'Projets, tâches, décisions, réunions, documents et messages.',
-        ),
-        final results => AsyncValueView(
-          value: results,
-          onRetry: () => _search(_query.text),
-          data: (hits) => hits.isEmpty
-              ? const EmptyState(icon: Icons.search_off, message: 'Aucun résultat.')
-              : ListView.separated(
-                  itemCount: hits.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, index) {
-                    final hit = hits[index];
-                    final route = _routeFor(hit);
-                    return ListTile(
-                      leading: Chip(label: Text(hit.type.label)),
-                      title: Text(hit.title, maxLines: 1, overflow: TextOverflow.ellipsis),
-                      subtitle: _snippet(hit.snippet),
-                      onTap: route == null ? null : () => context.push(route),
-                    );
-                  },
-                ),
-        ),
-      },
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: switch (_results) {
+          null => const EmptyState(
+            icon: Icons.search,
+            message: 'Projets, tâches, décisions, réunions, documents et messages.',
+          ),
+          final results => AsyncValueView(
+            value: results,
+            onRetry: () => _search(_query.text),
+            data: (hits) => hits.isEmpty
+                ? const EmptyState(icon: Icons.search_off, message: 'Aucun résultat.')
+                : ListView.separated(
+                    itemCount: hits.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, index) {
+                      final hit = hits[index];
+                      final route = _routeFor(hit);
+                      return ListTile(
+                        leading: Chip(label: Text(hit.type.label)),
+                        title: Text(hit.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+                        subtitle: _snippet(hit.snippet),
+                        onTap: route == null ? null : () => context.push(route),
+                      );
+                    },
+                  ),
+          ),
+        },
+      ),
     );
   }
 }

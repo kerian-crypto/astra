@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from app.models.enums import AttachmentKind
+from app.services import office_text
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,8 @@ def extract_text(file_type: FileType, path: Path) -> str | None:
                 if size >= MAX_EXTRACTED_CHARS:
                     break
             text = "\n".join(parts)
+        elif office_text.is_supported(file_type.content_type):
+            text = office_text.extract(path, file_type.content_type, MAX_EXTRACTED_CHARS)
         else:
             return None
     except Exception:

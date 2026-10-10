@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/theme/astra_theme.dart';
@@ -51,49 +52,51 @@ class _HealthScreenState extends ConsumerState<HealthScreen> {
     final health = ref.watch(healthProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('État de santé d\'Astra')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(healthProvider.future),
-        child: AsyncValueView(
-          value: health,
-          onRetry: () => ref.invalidate(healthProvider),
-          data: (data) => ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            children: [
-              OutlinedButton.icon(
-                onPressed: _isWriting ? null : _writeReport,
-                icon: _isWriting
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.auto_awesome),
-                label: Text(_isWriting ? 'Ronda rédige la synthèse…' : 'Synthèse par ASTRA AI'),
-              ),
-              if (_report != null)
-                Card(
-                  margin: const EdgeInsets.only(top: 12),
-                  child: Padding(padding: const EdgeInsets.all(16), child: Text(_report!)),
+      body: ResponsiveCenter(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(healthProvider.future),
+          child: AsyncValueView(
+            value: health,
+            onRetry: () => ref.invalidate(healthProvider),
+            data: (data) => ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              children: [
+                OutlinedButton.icon(
+                  onPressed: _isWriting ? null : _writeReport,
+                  icon: _isWriting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.auto_awesome),
+                  label: Text(_isWriting ? 'Ronda rédige la synthèse…' : 'Synthèse par ASTRA AI'),
                 ),
-              if (data.isHealthy)
-                const Padding(
-                  padding: EdgeInsets.only(top: 32),
-                  child: Text('Aucun signal d\'alerte : tout est sous contrôle.'),
-                ),
-              for (final MapEntry(key: title, value: items) in data.sections.entries)
-                if (items.isNotEmpty) ...[
-                  SectionTitle(title, count: items.length),
-                  for (final item in items)
-                    ListTile(
-                      contentPadding: EdgeInsets.zero,
-                      leading: const Icon(Icons.warning_amber, color: AstraTheme.warning),
-                      title: Text(item.title),
-                      subtitle: Text(item.subtitle),
-                      onTap: item.taskId == null && item.projectId == null
-                          ? null
-                          : () => _open(item),
-                    ),
-                ],
-            ],
+                if (_report != null)
+                  Card(
+                    margin: const EdgeInsets.only(top: 12),
+                    child: Padding(padding: const EdgeInsets.all(16), child: Text(_report!)),
+                  ),
+                if (data.isHealthy)
+                  const Padding(
+                    padding: EdgeInsets.only(top: 32),
+                    child: Text('Aucun signal d\'alerte : tout est sous contrôle.'),
+                  ),
+                for (final MapEntry(key: title, value: items) in data.sections.entries)
+                  if (items.isNotEmpty) ...[
+                    SectionTitle(title, count: items.length),
+                    for (final item in items)
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.warning_amber, color: AstraTheme.warning),
+                        title: Text(item.title),
+                        subtitle: Text(item.subtitle),
+                        onTap: item.taskId == null && item.projectId == null
+                            ? null
+                            : () => _open(item),
+                      ),
+                  ],
+              ],
+            ),
           ),
         ),
       ),

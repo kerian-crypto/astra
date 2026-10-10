@@ -278,3 +278,49 @@ def test_rollback_cancels_pending_pushes(db, make_user, pushes):
     db.commit()
 
     assert pushes.sent == []
+
+
+def test_dispatcher_uses_the_client_firebase_project_for_client_pushes(db, client_world):
+    """Chaque application a son projet Firebase : un push client part avec
+    l'émetteur client, jamais avec celui du Hub (et inversement)."""
+    import uuid as _uuid
+
+    from app.models import ClientDeviceToken
+    from app.models.enums import DevicePlatform
+    from app.push.message import PushAudience, PushMessage
+
+    class Recorder:
+        def __init__(self) -> None:
+            self.tokens: list[str] = []
+
+        def send(self, token, message):
+            self.tokens.append(token)
+            return SendResult.SENT
+
+        def close(self) -> None:
+            pass
+
+    account_id = _uuid.UUID(client_world["a"]["account"]["id"])
+    db.add(
+        ClientDeviceToken(
+            account_id=account_id, token="client-tok", platform=DevicePlatform.ANDROID
+        )
+    )
+    db.commit()
+    hub, clients = Recorder(), Recorder()
+    dispatcher = PushDispatcher(get_session_factory(), hub, clients)
+    message = PushMessage(
+        title="t",
+        body=None,
+        type="new_message",
+        entity_type="x",
+        entity_id=_uuid.uuid4(),
+        audience=PushAudience.CLIENT,
+    )
+
+    sent = dispatcher.deliver({account_id}, message)
+    hub_only = PushDispatcher(get_session_factory(), hub).deliver({account_id}, message)
+
+    assert sent == 1
+    assert clients.tokens == ["client-tok"] and hub.tokens == []
+    assert hub_only == 0

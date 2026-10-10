@@ -30,6 +30,7 @@ MAX_COMMENTS = 15
 MAX_MESSAGES = 40
 MAX_ACTIVITY = 15
 LONG_TEXT = 3_000
+DOCUMENT_TEXT = 7_000  # écran document : Ronda doit pouvoir le résumer
 LINE_TEXT = 300
 
 
@@ -139,7 +140,7 @@ def _document(db: Session, user: User, focus: AIFocus) -> FocusView:
     document = document_service.get_accessible_document(db, user, focus.id)
     lines = [
         f"Document : {document.title} ({document.kind}, {document.filename})",
-        f"Contenu : {_clip(document.text_content, LONG_TEXT) or 'contenu non indexé'}",
+        f"Contenu : {_clip(document.text_content, DOCUMENT_TEXT) or 'contenu non indexé'}",
     ]
     return FocusView(document.title, lines)
 

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/utils/formatting.dart';
@@ -61,32 +62,35 @@ class NotificationsScreen extends ConsumerWidget {
         title: const Text('Notifications'),
         actions: [TextButton(onPressed: () => _markAll(ref), child: const Text('Tout lire'))],
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(notificationsProvider.future),
-        child: AsyncValueView(
-          value: notifications,
-          onRetry: () => ref.invalidate(notificationsProvider),
-          data: (items) => items.isEmpty
-              ? const EmptyState(icon: Icons.notifications_none, message: 'Aucune notification.')
-              : ListView.builder(
-                  itemCount: items.length,
-                  itemBuilder: (_, index) {
-                    final n = items[index];
-                    return ListTile(
-                      leading: Icon(_icon(n.kind)),
-                      title: Text(
-                        n.title,
-                        style: n.isUnread ? const TextStyle(fontWeight: FontWeight.bold) : null,
-                      ),
-                      subtitle: Text(
-                        [?n.body, formatShortMoment(n.createdAt)].join('\n'),
-                        maxLines: 3,
-                      ),
-                      isThreeLine: n.body != null,
-                      onTap: () => _open(context, ref, n),
-                    );
-                  },
-                ),
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(notificationsProvider.future),
+          child: AsyncValueView(
+            value: notifications,
+            onRetry: () => ref.invalidate(notificationsProvider),
+            data: (items) => items.isEmpty
+                ? const EmptyState(icon: Icons.notifications_none, message: 'Aucune notification.')
+                : ListView.builder(
+                    itemCount: items.length,
+                    itemBuilder: (_, index) {
+                      final n = items[index];
+                      return ListTile(
+                        leading: Icon(_icon(n.kind)),
+                        title: Text(
+                          n.title,
+                          style: n.isUnread ? const TextStyle(fontWeight: FontWeight.bold) : null,
+                        ),
+                        subtitle: Text(
+                          [?n.body, formatShortMoment(n.createdAt)].join('\n'),
+                          maxLines: 3,
+                        ),
+                        isThreeLine: n.body != null,
+                        onTap: () => _open(context, ref, n),
+                      );
+                    },
+                  ),
+          ),
         ),
       ),
     );

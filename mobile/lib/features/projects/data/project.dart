@@ -46,6 +46,10 @@ class Project {
     this.objective,
     this.dueDate,
     this.budget,
+    this.clientCompanyId,
+    this.clientStatus,
+    this.progress,
+    this.clientSummary,
   });
 
   factory Project.fromJson(Json json) => Project(
@@ -59,6 +63,10 @@ class Project {
     // Le backend sérialise les Decimal en chaîne pour ne pas perdre de précision.
     budget: json['budget'] as String?,
     updatedAt: DateTime.parse(json['updated_at'] as String),
+    clientCompanyId: json['client_company_id'] as String?,
+    clientStatus: json['client_status'] as String?,
+    progress: json['progress'] as int?,
+    clientSummary: json['client_summary'] as String?,
   );
 
   final String id;
@@ -70,6 +78,12 @@ class Project {
   final DateTime? dueDate;
   final String? budget;
   final DateTime updatedAt;
+
+  /// Astra Client : entreprise cliente rattachée (nul = projet interne).
+  final String? clientCompanyId;
+  final String? clientStatus;
+  final int? progress;
+  final String? clientSummary;
 }
 
 class ProjectMember {

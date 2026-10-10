@@ -29,6 +29,8 @@ class AstraDocument {
     required this.isIndexed,
     this.projectId,
     this.uploadedBy,
+    this.sharedWithClient = false,
+    this.version = 1,
   });
 
   factory AstraDocument.fromJson(Json json) => AstraDocument(
@@ -41,6 +43,8 @@ class AstraDocument {
     uploadedBy: json['uploaded_by'] == null ? null : Member.fromJson(json['uploaded_by'] as Json),
     createdAt: DateTime.parse(json['created_at'] as String),
     isIndexed: json['is_indexed'] as bool,
+    sharedWithClient: json['visibility'] == 'client',
+    version: json['version'] as int? ?? 1,
   );
 
   final String id;
@@ -52,6 +56,10 @@ class AstraDocument {
   final Member? uploadedBy;
   final DateTime createdAt;
   final bool isIndexed;
+
+  /// Astra Client : document visible de l'entreprise cliente du projet.
+  final bool sharedWithClient;
+  final int version;
 
   String get readableSize {
     if (sizeBytes < 1024) return '$sizeBytes o';

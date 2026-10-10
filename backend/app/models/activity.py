@@ -21,6 +21,12 @@ class ActivityLog(UUIDPrimaryKeyMixin, TimestampMixin, Base):
         ForeignKey("projects.id", ondelete="CASCADE"), index=True
     )
     actor_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("users.id", ondelete="SET NULL"))
+    # Action d'un compte Astra Client (validation, ticket, paiement déclaré…).
+    client_account_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("client_accounts.id", ondelete="SET NULL"), index=True
+    )
+    # Nom figé du compte client, lisible dans l'historique côté Hub.
+    client_actor_name: Mapped[str | None] = mapped_column(String(120))
     entity_type: Mapped[str] = mapped_column(String(40))
     entity_id: Mapped[uuid.UUID] = mapped_column(index=True)
     action: Mapped[str] = mapped_column(String(40))

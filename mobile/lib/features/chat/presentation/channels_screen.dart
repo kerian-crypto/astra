@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/utils/formatting.dart';
@@ -46,21 +47,24 @@ class ChannelsScreen extends ConsumerWidget {
         onPressed: () => _newConversation(context, ref),
         child: const Icon(Icons.edit_outlined),
       ),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(channelsProvider.future),
-        child: AsyncValueView(
-          value: channels,
-          onRetry: () => ref.invalidate(channelsProvider),
-          data: (items) => items.isEmpty
-              ? const EmptyState(
-                  icon: Icons.forum_outlined,
-                  message: 'Aucune conversation. Les canaux d\'Astra apparaîtront ici.',
-                )
-              : ListView.separated(
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const Divider(height: 1),
-                  itemBuilder: (_, index) => _ChannelTile(channel: items[index]),
-                ),
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(channelsProvider.future),
+          child: AsyncValueView(
+            value: channels,
+            onRetry: () => ref.invalidate(channelsProvider),
+            data: (items) => items.isEmpty
+                ? const EmptyState(
+                    icon: Icons.forum_outlined,
+                    message: 'Aucune conversation. Les canaux d\'Astra apparaîtront ici.',
+                  )
+                : ListView.separated(
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const Divider(height: 1),
+                    itemBuilder: (_, index) => _ChannelTile(channel: items[index]),
+                  ),
+          ),
         ),
       ),
     );

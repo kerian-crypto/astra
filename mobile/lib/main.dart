@@ -9,6 +9,7 @@ import 'package:astra_hub/core/push/push_messaging.dart';
 import 'package:astra_hub/core/push/push_service.dart';
 import 'package:astra_hub/core/router/app_router.dart';
 import 'package:astra_hub/core/theme/astra_theme.dart';
+import 'package:astra_hub/core/update/app_update.dart';
 import 'package:astra_hub/features/ai/presentation/ronda_overlay.dart';
 
 Future<void> main() async {
@@ -31,6 +32,7 @@ class AstraApp extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final router = ref.watch(routerProvider);
     return MaterialApp.router(
       title: 'Astra Hub',
       debugShowCheckedModeBanner: false,
@@ -38,8 +40,11 @@ class AstraApp extends ConsumerWidget {
       locale: const Locale('fr'),
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
-      routerConfig: ref.watch(routerProvider),
-      builder: (_, child) => RondaOverlay(child: child ?? const SizedBox.shrink()),
+      routerConfig: router,
+      builder: (_, child) => UpdateGate(
+        navigatorKey: router.routerDelegate.navigatorKey,
+        child: RondaOverlay(child: child ?? const SizedBox.shrink()),
+      ),
     );
   }
 }

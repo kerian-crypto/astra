@@ -16,7 +16,7 @@ from sqlalchemy.orm import Session
 from app.models import ActivityLog, User
 
 
-def _jsonable(value: Any) -> Any:
+def jsonable(value: Any) -> Any:
     if isinstance(value, Enum):
         return value.value
     if isinstance(value, uuid.UUID | Decimal):
@@ -24,7 +24,7 @@ def _jsonable(value: Any) -> Any:
     if isinstance(value, date | datetime):
         return value.isoformat()
     if isinstance(value, list | tuple):
-        return [_jsonable(v) for v in value]
+        return [jsonable(v) for v in value]
     return value
 
 
@@ -35,7 +35,7 @@ def diff(entity: object, changes: dict[str, Any]) -> dict[str, dict[str, Any]]:
     for field, new_value in changes.items():
         old_value = getattr(entity, field)
         if old_value != new_value:
-            result[field] = {"from": _jsonable(old_value), "to": _jsonable(new_value)}
+            result[field] = {"from": jsonable(old_value), "to": jsonable(new_value)}
     return result
 
 
@@ -56,7 +56,7 @@ def record(
             entity_type=entity_type,
             entity_id=entity_id,
             action=action,
-            changes={k: _jsonable(v) for k, v in (changes or {}).items()},
+            changes={k: jsonable(v) for k, v in (changes or {}).items()},
         )
     )
 

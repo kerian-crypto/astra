@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/theme/astra_theme.dart';
@@ -25,12 +26,15 @@ class MeetingDetailScreen extends ConsumerWidget {
     final detail = ref.watch(meetingDetailProvider(meetingId));
     return Scaffold(
       appBar: AppBar(title: Text(detail.value?.meeting.title ?? 'Réunion')),
-      body: AsyncValueView(
-        value: detail,
-        onRetry: () => ref.invalidate(meetingDetailProvider(meetingId)),
-        data: (data) => RefreshIndicator(
-          onRefresh: () => ref.refresh(meetingDetailProvider(meetingId).future),
-          child: _MeetingBody(detail: data),
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: AsyncValueView(
+          value: detail,
+          onRetry: () => ref.invalidate(meetingDetailProvider(meetingId)),
+          data: (data) => RefreshIndicator(
+            onRefresh: () => ref.refresh(meetingDetailProvider(meetingId).future),
+            child: _MeetingBody(detail: data),
+          ),
         ),
       ),
     );

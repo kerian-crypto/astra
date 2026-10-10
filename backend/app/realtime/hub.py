@@ -51,14 +51,19 @@ class RealtimeHub:
 
 
 hub = RealtimeHub()
+# Connexions Astra Client : hub distinct, un compte client ne reçoit jamais
+# un événement destiné aux membres (et inversement).
+client_hub = RealtimeHub()
 
 
-def publish_from_thread(event: Event, user_ids: set[uuid.UUID]) -> None:
+def publish_from_thread(
+    event: Event, user_ids: set[uuid.UUID], target: RealtimeHub | None = None
+) -> None:
     """Publie depuis un thread de travail AnyIO (route synchrone). Hors d'un
     tel contexte (CLI, scripts), le temps réel est simplement ignoré."""
     if not user_ids:
         return
     try:
-        anyio.from_thread.run_sync(hub.publish, event, user_ids)
+        anyio.from_thread.run_sync((target or hub).publish, event, user_ids)
     except RuntimeError:
         logger.debug("Publication temps réel ignorée hors du serveur")

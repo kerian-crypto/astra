@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/widgets/astra_app_bar.dart';
 
@@ -42,80 +43,93 @@ class ProfileScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: const AstraAppBar(title: 'Profil'),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
-        children: [
-          Center(
-            child: Stack(
-              children: [
-                MemberAvatar(member: member, radius: 40),
-                Positioned(
-                  right: -8,
-                  bottom: -8,
-                  child: IconButton.filledTonal(
-                    tooltip: 'Changer de photo',
-                    icon: const Icon(Icons.photo_camera_outlined, size: 18),
-                    onPressed: () => _changePhoto(context, ref),
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: ListView(
+          padding: const EdgeInsets.all(16),
+          children: [
+            Center(
+              child: Stack(
+                children: [
+                  MemberAvatar(member: member, radius: 40),
+                  Positioned(
+                    right: -8,
+                    bottom: -8,
+                    child: IconButton.filledTonal(
+                      tooltip: 'Changer de photo',
+                      icon: const Icon(Icons.photo_camera_outlined, size: 18),
+                      onPressed: () => _changePhoto(context, ref),
+                    ),
                   ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(member.fullName, textAlign: TextAlign.center, style: textTheme.titleLarge),
+            if (member.jobTitle != null)
+              Text(member.jobTitle!, textAlign: TextAlign.center, style: textTheme.bodyMedium),
+            const SizedBox(height: 24),
+            ListTile(leading: const Icon(Icons.email_outlined), title: Text(member.email)),
+            ListTile(
+              leading: const Icon(Icons.shield_outlined),
+              title: Text(member.accessLevel.label),
+              subtitle: const Text('Niveau d\'accès'),
+            ),
+            ListTile(
+              leading: const Icon(Icons.speed_outlined),
+              title: Text('${member.availability} %'),
+              subtitle: const Text('Disponibilité'),
+            ),
+            if (member.skills.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Text('Compétences', style: textTheme.titleSmall),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [for (final skill in member.skills) Chip(label: Text(skill))],
+              ),
+            ],
+            const SizedBox(height: 24),
+            if (member.accessLevel == AccessLevel.admin)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.how_to_reg_outlined),
+                title: const Text('Demandes d\'inscription'),
+                subtitle: const Text('Valider les nouveaux comptes'),
+                onTap: () => context.push(Routes.registrations),
+              ),
+            if (member.canCreateProjects)
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: const Icon(Icons.storefront_outlined),
+                title: const Text('Espace clients'),
+                subtitle: const Text(
+                  'Entreprises, cahiers des charges, échanges, support, paiements',
                 ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 16),
-          Text(member.fullName, textAlign: TextAlign.center, style: textTheme.titleLarge),
-          if (member.jobTitle != null)
-            Text(member.jobTitle!, textAlign: TextAlign.center, style: textTheme.bodyMedium),
-          const SizedBox(height: 24),
-          ListTile(leading: const Icon(Icons.email_outlined), title: Text(member.email)),
-          ListTile(
-            leading: const Icon(Icons.shield_outlined),
-            title: Text(member.accessLevel.label),
-            subtitle: const Text('Niveau d\'accès'),
-          ),
-          ListTile(
-            leading: const Icon(Icons.speed_outlined),
-            title: Text('${member.availability} %'),
-            subtitle: const Text('Disponibilité'),
-          ),
-          if (member.skills.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Text('Compétences', style: textTheme.titleSmall),
-            const SizedBox(height: 8),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [for (final skill in member.skills) Chip(label: Text(skill))],
-            ),
-          ],
-          const SizedBox(height: 24),
-          if (member.accessLevel == AccessLevel.admin)
+                onTap: () => context.push(Routes.clients),
+              ),
             ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: const Icon(Icons.how_to_reg_outlined),
-              title: const Text('Demandes d\'inscription'),
-              subtitle: const Text('Valider les nouveaux comptes'),
-              onTap: () => context.push(Routes.registrations),
+              leading: const Icon(Icons.library_books_outlined),
+              title: const Text('Documents d\'Astra'),
+              subtitle: const Text('Guides, retours d\'expérience, connaissances'),
+              onTap: () => context.push(Routes.documents),
             ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.library_books_outlined),
-            title: const Text('Documents d\'Astra'),
-            subtitle: const Text('Guides, retours d\'expérience, connaissances'),
-            onTap: () => context.push(Routes.documents),
-          ),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: const Icon(Icons.monitor_heart_outlined),
-            title: const Text('État de santé d\'Astra'),
-            onTap: () => context.push(Routes.health),
-          ),
-          const SizedBox(height: 24),
-          OutlinedButton.icon(
-            onPressed: () => ref.read(authControllerProvider.notifier).logout(),
-            icon: const Icon(Icons.logout),
-            label: const Text('Se déconnecter'),
-          ),
-        ],
+            ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: const Icon(Icons.monitor_heart_outlined),
+              title: const Text('État de santé d\'Astra'),
+              onTap: () => context.push(Routes.health),
+            ),
+            const SizedBox(height: 24),
+            OutlinedButton.icon(
+              onPressed: () => ref.read(authControllerProvider.notifier).logout(),
+              icon: const Icon(Icons.logout),
+              label: const Text('Se déconnecter'),
+            ),
+          ],
+        ),
       ),
     );
   }

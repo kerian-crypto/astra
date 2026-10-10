@@ -50,6 +50,19 @@ class ProjectRepository {
       return ProjectDetail.fromJson(response.data!);
     });
   }
+
+  /// Ajoute un membre ou change son rôle (responsable du projet uniquement).
+  Future<void> setMember(String projectId, String userId, ProjectRole role) {
+    return guardApi(() async {
+      await _dio.put<void>('/projects/$projectId/members/$userId', data: {'role': role.name});
+    });
+  }
+
+  Future<void> removeMember(String projectId, String userId) {
+    return guardApi(() async {
+      await _dio.delete<void>('/projects/$projectId/members/$userId');
+    });
+  }
 }
 
 final projectListProvider = FutureProvider.autoDispose<List<Project>>(

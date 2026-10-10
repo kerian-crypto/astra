@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/theme/astra_theme.dart';
 import 'package:astra_hub/core/utils/formatting.dart';
@@ -27,59 +28,61 @@ class TodayScreen extends ConsumerWidget {
 
     return Scaffold(
       appBar: AstraAppBar(title: 'Bonjour $firstName'),
-      body: RefreshIndicator(
-        onRefresh: () => _refresh(ref),
-        child: AsyncValueView(
-          value: dashboard,
-          onRetry: () => ref.invalidate(dashboardProvider),
-          data: (stats) => ListView(
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
-            children: [
-              const SectionTitle('Aujourd\'hui'),
-              _StatGrid(
-                stats: [
-                  ('Mes tâches', stats.myTodayTasks, false),
-                  ('En retard', stats.myOverdueTasks, stats.myOverdueTasks > 0),
-                  ('Réunions', stats.myMeetingsToday, false),
-                  ('Notifications', stats.unreadNotifications, false),
-                ],
-              ),
-              const SectionTitle('Astra'),
-              _StatGrid(
-                stats: [
-                  ('Projets actifs', stats.activeProjects, false),
-                  ('Tâches ouvertes', stats.openTasks, false),
-                  ('Tâches en retard', stats.overdueTasks, stats.overdueTasks > 0),
-                  (
-                    'Projets à surveiller',
-                    stats.projectsNeedingAttention.length,
-                    stats.projectsNeedingAttention.isNotEmpty,
-                  ),
-                ],
-              ),
-              for (final project in stats.projectsNeedingAttention)
-                ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.warning_amber, color: AstraTheme.warning),
-                  title: Text(project.name),
-                  subtitle: Text(project.reason),
-                  onTap: () => context.go(Routes.project(project.id)),
+      body: ResponsiveCenter(
+        child: RefreshIndicator(
+          onRefresh: () => _refresh(ref),
+          child: AsyncValueView(
+            value: dashboard,
+            onRetry: () => ref.invalidate(dashboardProvider),
+            data: (stats) => ListView(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
+              children: [
+                const SectionTitle('Aujourd\'hui'),
+                _StatGrid(
+                  stats: [
+                    ('Mes tâches', stats.myTodayTasks, false),
+                    ('En retard', stats.myOverdueTasks, stats.myOverdueTasks > 0),
+                    ('Réunions', stats.myMeetingsToday, false),
+                    ('Notifications', stats.unreadNotifications, false),
+                  ],
                 ),
-              const SectionTitle('ASTRA AI'),
-              const _AiShortcuts(),
-              ...work.when(
-                data: (data) => _workSections(context, data),
-                loading: () => const [
-                  Padding(
-                    padding: EdgeInsets.all(24),
-                    child: Center(child: CircularProgressIndicator()),
+                const SectionTitle('Astra'),
+                _StatGrid(
+                  stats: [
+                    ('Projets actifs', stats.activeProjects, false),
+                    ('Tâches ouvertes', stats.openTasks, false),
+                    ('Tâches en retard', stats.overdueTasks, stats.overdueTasks > 0),
+                    (
+                      'Projets à surveiller',
+                      stats.projectsNeedingAttention.length,
+                      stats.projectsNeedingAttention.isNotEmpty,
+                    ),
+                  ],
+                ),
+                for (final project in stats.projectsNeedingAttention)
+                  ListTile(
+                    contentPadding: EdgeInsets.zero,
+                    leading: const Icon(Icons.warning_amber, color: AstraTheme.warning),
+                    title: Text(project.name),
+                    subtitle: Text(project.reason),
+                    onTap: () => context.go(Routes.project(project.id)),
                   ),
-                ],
-                error: (error, _) => [
-                  ErrorRetry(message: '$error', onRetry: () => ref.invalidate(myWorkProvider)),
-                ],
-              ),
-            ],
+                const SectionTitle('ASTRA AI'),
+                const _AiShortcuts(),
+                ...work.when(
+                  data: (data) => _workSections(context, data),
+                  loading: () => const [
+                    Padding(
+                      padding: EdgeInsets.all(24),
+                      child: Center(child: CircularProgressIndicator()),
+                    ),
+                  ],
+                  error: (error, _) => [
+                    ErrorRetry(message: '$error', onRetry: () => ref.invalidate(myWorkProvider)),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -134,13 +137,19 @@ class _StatGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
+    // Hauteur fixe des tuiles (pas de proportion) : rien ne déborde, quelle que
+    // soit la largeur ; 2 colonnes sur téléphone, jusqu'à 4 sur grand écran.
+    final width = MediaQuery.sizeOf(context).width;
+    final columns = width >= 900 ? 4 : (width >= 560 ? 3 : 2);
+    return GridView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      mainAxisSpacing: 12,
-      crossAxisSpacing: 12,
-      childAspectRatio: 2.2,
+      gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: columns,
+        mainAxisSpacing: 12,
+        crossAxisSpacing: 12,
+        mainAxisExtent: 92,
+      ),
       children: [
         for (final (label, value, highlight) in stats)
           Card(
@@ -157,7 +166,12 @@ class _StatGrid extends StatelessWidget {
                       color: highlight ? AstraTheme.error : null,
                     ),
                   ),
-                  Text(label, style: Theme.of(context).textTheme.bodySmall),
+                  Text(
+                    label,
+                    style: Theme.of(context).textTheme.bodySmall,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
                 ],
               ),
             ),

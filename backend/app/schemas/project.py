@@ -4,6 +4,7 @@ from decimal import Decimal
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.client_enums import ClientProjectStatus
 from app.models.enums import Priority, ProjectRole, ProjectStatus
 from app.schemas.common import PartialUpdate
 from app.schemas.user import UserPublic
@@ -30,6 +31,11 @@ class ProjectPublic(BaseModel):
     created_by_id: uuid.UUID
     created_at: datetime
     updated_at: datetime
+    # Astra Client (nuls pour un projet purement interne).
+    client_company_id: uuid.UUID | None = None
+    client_status: ClientProjectStatus | None = None
+    progress: int | None = None
+    client_summary: str | None = None
 
 
 class ProjectDetail(ProjectPublic):
@@ -62,6 +68,12 @@ class ProjectUpdate(PartialUpdate):
     priority: Priority | None = None
     due_date: date | None = None
     budget: Decimal | None = Field(default=None, ge=0, max_digits=14, decimal_places=2)
+    # Astra Client : rattachement (managers et administrateurs) et
+    # informations montrées au client (responsable du projet).
+    client_company_id: uuid.UUID | None = None
+    client_status: ClientProjectStatus | None = None
+    progress: int | None = Field(default=None, ge=0, le=100)
+    client_summary: str | None = Field(default=None, max_length=10_000)
 
 
 class ProjectMemberUpsert(BaseModel):

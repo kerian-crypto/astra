@@ -4,7 +4,8 @@ import uuid
 from dataclasses import dataclass, field
 from enum import StrEnum
 
-from app.models import Notification
+from app.models import ClientNotification, Notification
+from app.models.client_enums import ClientNotificationKind
 from app.models.enums import NotificationKind
 
 
@@ -14,6 +15,11 @@ class PushChannel(StrEnum):
 
     MESSAGES = "messages"
     ACTIVITY = "activity"
+
+
+class PushAudience(StrEnum):
+    MEMBER = "member"
+    CLIENT = "client"
 
 
 # Type de push sans notification enregistrée (messages du chat, Ronda).
@@ -32,6 +38,8 @@ class PushMessage:
     channel: PushChannel = PushChannel.ACTIVITY
     notification_id: uuid.UUID | None = None
     extra: dict[str, str] = field(default_factory=dict)
+    # Destinataires : membres (Astra Hub) ou comptes client (Astra Client).
+    audience: PushAudience = PushAudience.MEMBER
 
     def data(self) -> dict[str, str]:
         """Charge utile FCM : uniquement des chaînes."""
@@ -60,4 +68,22 @@ def from_notification(notification: Notification) -> PushMessage:
         entity_id=notification.entity_id,
         channel=channel,
         notification_id=notification.id,
+    )
+
+
+def from_client_notification(notification: ClientNotification) -> PushMessage:
+    channel = (
+        PushChannel.MESSAGES
+        if notification.kind == ClientNotificationKind.NEW_MESSAGE
+        else PushChannel.ACTIVITY
+    )
+    return PushMessage(
+        title=notification.title,
+        body=notification.body,
+        type=notification.kind.value,
+        entity_type=notification.entity_type,
+        entity_id=notification.entity_id,
+        channel=channel,
+        notification_id=notification.id,
+        audience=PushAudience.CLIENT,
     )

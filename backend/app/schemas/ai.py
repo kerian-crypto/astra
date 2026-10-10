@@ -18,6 +18,7 @@ from app.models.enums import (
     AIMessageStatus,
     AIRole,
     Priority,
+    ProjectRole,
 )
 from app.schemas.plan import ProjectPlan
 from app.schemas.search import SearchType
@@ -170,7 +171,14 @@ class ConversationQuestion(BaseModel):
 class DraftAction(BaseModel):
     """Action éventuelle demandée par le membre, telle que Ronda la comprend."""
 
-    kind: Literal["none", "create_project", "schedule_meeting", "create_task", "create_decision"]
+    kind: Literal[
+        "none",
+        "create_project",
+        "schedule_meeting",
+        "create_task",
+        "create_decision",
+        "add_project_member",
+    ]
     title: str
     description: str
     project_number: int | None  # numéro [n] d'un élément du contexte
@@ -178,6 +186,8 @@ class DraftAction(BaseModel):
     time: str | None  # HH:MM, heure locale de la réunion
     duration_minutes: int | None
     priority: Priority | None
+    member: str | None  # nom ou e-mail du membre à ajouter au projet
+    role: ProjectRole | None  # son rôle dans le projet (contributeur par défaut)
 
 
 class DraftReply(BaseModel):

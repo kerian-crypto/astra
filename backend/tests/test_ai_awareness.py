@@ -248,3 +248,33 @@ def test_focus_on_a_decision_and_a_document(client, team, db, llm):
 
     _ask(client, viewer, "Résume", {"type": "document", "id": str(document.id)})
     assert "Le paiement mobile est obligatoire." in _context(llm)
+
+
+def test_ronda_reads_relevant_passages_deep_inside_a_document(client, team, db, llm):
+    from app.models import Document
+    from app.models.enums import DocumentKind
+
+    filler = "Le prestataire fournit un service conforme. " * 200
+    db.add(
+        Document(
+            project_id=team["project"]["id"],
+            title="Contrat prestataire",
+            kind=DocumentKind.OTHER,
+            filename="contrat.txt",
+            content_type="text/plain",
+            size_bytes=10,
+            sha256="0" * 64,
+            storage_key="test-key",
+            text_content=f"{filler}Article 9 : la pénalité de retard est de 5 % par semaine.",
+            uploaded_by_id=team["lead"].id,
+        )
+    )
+    db.commit()
+
+    _ask(client, team["h"]["viewer"], "Quelle est la pénalité de retard ?")
+    context = _context(llm)
+    assert "Contenu des documents trouvés" in context
+    assert "5 % par semaine" in context
+
+    _ask(client, team["h"]["outsider"], "Quelle est la pénalité de retard ?")
+    assert "5 % par semaine" not in _context(llm)

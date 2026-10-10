@@ -11,9 +11,9 @@ from collections.abc import Iterable
 from sqlalchemy import event
 from sqlalchemy.orm import Session
 
-from app.models import Notification
+from app.models import ClientNotification, Notification
 from app.push import dispatcher
-from app.push.message import PushMessage, from_notification
+from app.push.message import PushMessage, from_client_notification, from_notification
 
 _NOTIFICATIONS_KEY = "astra.push_notifications"
 _QUEUED_KEY = "astra.push_queued"
@@ -27,14 +27,17 @@ def enqueue(db: Session, user_ids: Iterable[uuid.UUID], message: PushMessage) ->
 
 
 def _collect(session: Session, _flush_context: object, _instances: object) -> None:
-    created = [obj for obj in session.new if isinstance(obj, Notification)]
+    created = [obj for obj in session.new if isinstance(obj, Notification | ClientNotification)]
     if created:
         session.info.setdefault(_NOTIFICATIONS_KEY, []).extend(created)
 
 
 def _dispatch(session: Session) -> None:
     for notification in session.info.pop(_NOTIFICATIONS_KEY, []):
-        dispatcher.submit({notification.user_id}, from_notification(notification))
+        if isinstance(notification, ClientNotification):
+            dispatcher.submit({notification.account_id}, from_client_notification(notification))
+        else:
+            dispatcher.submit({notification.user_id}, from_notification(notification))
     for recipients, message in session.info.pop(_QUEUED_KEY, []):
         dispatcher.submit(recipients, message)
 

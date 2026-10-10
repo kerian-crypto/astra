@@ -3,6 +3,7 @@ from datetime import datetime
 
 from pydantic import BaseModel, ConfigDict, Field
 
+from app.models.client_enums import DocumentVisibility
 from app.models.enums import DocumentKind
 from app.schemas.user import UserPublic
 
@@ -22,3 +23,7 @@ class DocumentPublic(BaseModel):
     uploaded_by: UserPublic | None
     created_at: datetime
     is_indexed: bool = False
+    # Astra Client : partage et versions.
+    visibility: DocumentVisibility = DocumentVisibility.INTERNAL
+    version: int = 1
+    version_group_id: uuid.UUID | None = None

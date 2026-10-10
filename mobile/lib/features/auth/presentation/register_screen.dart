@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/features/auth/data/registration_repository.dart';
@@ -129,61 +130,64 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: LinearProgressIndicator(value: (_step + 1) / _titles.length),
         ),
       ),
-      body: SafeArea(
-        child: Column(
-          children: [
-            Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.all(24),
-                  children: [
-                    Text('Étape ${_step + 1} sur ${_titles.length}', style: textTheme.labelLarge),
-                    const SizedBox(height: 4),
-                    Text(_titles[_step], style: textTheme.headlineSmall),
-                    const SizedBox(height: 24),
-                    // Clé par étape : les champs gardent leur état propre.
-                    KeyedSubtree(key: ValueKey(_step), child: _currentStep()),
-                    if (_error != null) ...[
-                      const SizedBox(height: 16),
-                      Text(
-                        _error!,
-                        key: const Key('register-error'),
-                        style: TextStyle(color: Theme.of(context).colorScheme.error),
-                      ),
+      body: ResponsiveCenter(
+        maxWidth: 640,
+        child: SafeArea(
+          child: Column(
+            children: [
+              Expanded(
+                child: Form(
+                  key: _formKey,
+                  child: ListView(
+                    padding: const EdgeInsets.all(24),
+                    children: [
+                      Text('Étape ${_step + 1} sur ${_titles.length}', style: textTheme.labelLarge),
+                      const SizedBox(height: 4),
+                      Text(_titles[_step], style: textTheme.headlineSmall),
+                      const SizedBox(height: 24),
+                      // Clé par étape : les champs gardent leur état propre.
+                      KeyedSubtree(key: ValueKey(_step), child: _currentStep()),
+                      if (_error != null) ...[
+                        const SizedBox(height: 16),
+                        Text(
+                          _error!,
+                          key: const Key('register-error'),
+                          style: TextStyle(color: Theme.of(context).colorScheme.error),
+                        ),
+                      ],
                     ],
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
+                child: Row(
+                  children: [
+                    if (_step > 0)
+                      Expanded(
+                        child: OutlinedButton(
+                          onPressed: _isSubmitting ? null : _back,
+                          child: const Text('Précédent'),
+                        ),
+                      ),
+                    if (_step > 0) const SizedBox(width: 12),
+                    Expanded(
+                      flex: 2,
+                      child: ElevatedButton(
+                        onPressed: _isSubmitting ? null : _next,
+                        child: _isSubmitting
+                            ? const SizedBox.square(
+                                dimension: 24,
+                                child: CircularProgressIndicator(strokeWidth: 2),
+                              )
+                            : Text(_isLastStep ? 'Envoyer ma demande' : 'Suivant'),
+                      ),
+                    ),
                   ],
                 ),
               ),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(24, 8, 24, 16),
-              child: Row(
-                children: [
-                  if (_step > 0)
-                    Expanded(
-                      child: OutlinedButton(
-                        onPressed: _isSubmitting ? null : _back,
-                        child: const Text('Précédent'),
-                      ),
-                    ),
-                  if (_step > 0) const SizedBox(width: 12),
-                  Expanded(
-                    flex: 2,
-                    child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _next,
-                      child: _isSubmitting
-                          ? const SizedBox.square(
-                              dimension: 24,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : Text(_isLastStep ? 'Envoyer ma demande' : 'Suivant'),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );

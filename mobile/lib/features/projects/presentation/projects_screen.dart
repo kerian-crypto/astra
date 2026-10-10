@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/widgets/astra_app_bar.dart';
@@ -28,22 +29,24 @@ class ProjectsScreen extends ConsumerWidget {
               label: const Text('Nouveau'),
             )
           : null,
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(projectListProvider.future),
-        child: AsyncValueView(
-          value: projects,
-          onRetry: () => ref.invalidate(projectListProvider),
-          data: (items) => items.isEmpty
-              ? const EmptyState(
-                  icon: Icons.folder_off_outlined,
-                  message: 'Vous ne participez encore à aucun projet.',
-                )
-              : ListView.separated(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: items.length,
-                  separatorBuilder: (_, _) => const SizedBox(height: 12),
-                  itemBuilder: (_, index) => _ProjectCard(project: items[index]),
-                ),
+      body: ResponsiveCenter(
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(projectListProvider.future),
+          child: AsyncValueView(
+            value: projects,
+            onRetry: () => ref.invalidate(projectListProvider),
+            data: (items) => items.isEmpty
+                ? const EmptyState(
+                    icon: Icons.folder_off_outlined,
+                    message: 'Vous ne participez encore à aucun projet.',
+                  )
+                : ListView.separated(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: items.length,
+                    separatorBuilder: (_, _) => const SizedBox(height: 12),
+                    itemBuilder: (_, index) => _ProjectCard(project: items[index]),
+                  ),
+          ),
         ),
       ),
     );

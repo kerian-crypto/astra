@@ -4,10 +4,12 @@ from collections.abc import Iterable
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
-from app.models import Project, ProjectMember, User
+from app.models import ClientCompany, Project, ProjectMember, User
 from app.models.enums import NotificationKind, ProjectRole, ProjectStatus
 from app.schemas.project import ProjectCreate, ProjectUpdate
 from app.services import activity_service, notification_service, permissions
+from app.services.client import hub_access
+from app.services.client import projects as client_projects
 from app.services.errors import ConflictError, NotFoundError, PermissionDeniedError
 from app.services.labels import PROJECT_STATUS_LABELS
 
@@ -117,8 +119,20 @@ def _record(
     )
 
 
+def _check_client_link(db: Session, actor: User, company_id: uuid.UUID | None) -> None:
+    """Rattacher un projet à un client l'ouvre à cette entreprise : réservé
+    aux managers et administrateurs, vers une entreprise active."""
+    hub_access.require_client_manager(actor)
+    if company_id is not None:
+        company = db.get(ClientCompany, company_id)
+        if company is None or not company.is_active:
+            raise NotFoundError("Entreprise cliente introuvable.")
+
+
 def update_project(db: Session, actor: User, project: Project, data: ProjectUpdate) -> Project:
     changes = data.model_dump(exclude_unset=True)
+    if "client_company_id" in changes and changes["client_company_id"] != project.client_company_id:
+        _check_client_link(db, actor, changes["client_company_id"])
     delta = activity_service.diff(project, changes)
     for field, value in changes.items():
         setattr(project, field, value)
@@ -135,6 +149,7 @@ def update_project(db: Session, actor: User, project: Project, data: ProjectUpda
             entity_type="project",
             entity_id=project.id,
         )
+    client_projects.after_project_update(db, actor, project, delta)
     db.commit()
     return project
 

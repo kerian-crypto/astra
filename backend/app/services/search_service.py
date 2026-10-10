@@ -8,7 +8,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-from sqlalchemy import ColumnElement, Select, func, literal_column, select
+from sqlalchemy import ColumnElement, Select, Text, cast, func, literal_column, select
 from sqlalchemy.orm import Session
 
 from app.models import Decision, Document, Meeting, Message, Project, Task, User
@@ -132,13 +132,41 @@ def _search_source(
     ]
 
 
+def _any_word(text: str) -> ColumnElement:
+    """Mêmes mots-clés que la recherche stricte, mais reliés par OU : une question
+    en langage naturel (« Quelle est la pénalité ? ») trouve aussi les documents
+    qui ne contiennent pas « quelle ». Les lexèmes, déjà réduits, sont relus tels
+    quels (configuration `simple`)."""
+    strict = cast(func.websearch_to_tsquery(LANGUAGE, text), Text)
+    return func.to_tsquery(
+        literal_column("'simple'::regconfig"), func.replace(strict, " & ", " | ")
+    )
+
+
 def search(
-    db: Session, user: User, text: str, types: set[SearchType] | None = None
+    db: Session,
+    user: User,
+    text: str,
+    types: set[SearchType] | None = None,
+    *,
+    match_any: bool = False,
 ) -> list[SearchHit]:
-    query = func.websearch_to_tsquery(LANGUAGE, text)
+    query = _any_word(text) if match_any else func.websearch_to_tsquery(LANGUAGE, text)
     hits: list[SearchHit] = []
     for source in _sources():
         if types and source.type not in types:
             continue
         hits.extend(_search_source(db, user, source, query))
     return sorted(hits, key=lambda hit: hit.score, reverse=True)[:MAX_RESULTS]
+
+
+PASSAGE_OPTIONS = "MaxWords=60, MinWords=25, MaxFragments=6, FragmentDelimiter=' … '"
+
+
+def document_passages(db: Session, user: User, document_id: Any, text: str) -> str:
+    """Passages d'un document visible qui répondent le mieux à `text` (pour ASTRA AI)."""
+    query = _any_word(text)
+    statement = document_service.visible_documents_statement(user).with_only_columns(
+        func.ts_headline(LANGUAGE, Document.text_content, query, PASSAGE_OPTIONS)
+    )
+    return db.scalar(statement.where(Document.id == document_id)) or ""

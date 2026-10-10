@@ -1,12 +1,16 @@
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:open_filex/open_filex.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
+import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/utils/formatting.dart';
 import 'package:astra_hub/core/widgets/async_value_view.dart';
 import 'package:astra_hub/features/auth/presentation/auth_controller.dart';
+import 'package:astra_hub/features/clients/data/clients_repository.dart';
 import 'package:astra_hub/features/knowledge/data/knowledge.dart';
 import 'package:astra_hub/features/knowledge/data/knowledge_repository.dart';
 
@@ -21,17 +25,28 @@ class DocumentsScreen extends ConsumerWidget {
     final canUpload = ref.watch(authControllerProvider).value?.canCreateProjects ?? false;
     return Scaffold(
       appBar: AppBar(title: const Text('Documents d\'Astra')),
-      body: DocumentsList(projectId: projectId, canUpload: canUpload),
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: DocumentsList(projectId: projectId, canUpload: canUpload),
+      ),
     );
   }
 }
 
 /// Liste de documents d'un projet (ou généraux si `projectId` est nul).
 class DocumentsList extends ConsumerStatefulWidget {
-  const DocumentsList({required this.projectId, required this.canUpload, super.key});
+  const DocumentsList({
+    required this.projectId,
+    required this.canUpload,
+    this.canShareWithClient = false,
+    super.key,
+  });
 
   final String? projectId;
   final bool canUpload;
+
+  /// Responsable d'un projet rattaché à un client : peut lui partager un document.
+  final bool canShareWithClient;
 
   @override
   ConsumerState<DocumentsList> createState() => _DocumentsListState();
@@ -94,6 +109,22 @@ class _DocumentsListState extends ConsumerState<DocumentsList> {
     }
   }
 
+  Future<void> _toggleShare(AstraDocument doc) async {
+    try {
+      await ref
+          .read(clientsRepositoryProvider)
+          .setDocumentVisibility(doc.id, shared: !doc.sharedWithClient);
+      ref.invalidate(documentsProvider(widget.projectId));
+      _show(
+        doc.sharedWithClient
+            ? 'Document retiré de l\'espace client.'
+            : 'Document partagé avec le client.',
+      );
+    } on ApiException catch (error) {
+      _show(error.message);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final documents = ref.watch(documentsProvider(widget.projectId));
@@ -116,10 +147,37 @@ class _DocumentsListState extends ConsumerState<DocumentsList> {
                         leading: const Icon(Icons.description_outlined),
                         title: Text(doc.title),
                         subtitle: Text(
-                          '${doc.kind.label} · ${doc.filename} · ${doc.readableSize}\n'
-                          '${doc.uploadedBy?.fullName ?? ''} · ${formatDate(doc.createdAt)}',
+                          '${doc.kind.label} · ${doc.filename} · ${doc.readableSize}'
+                          '${doc.version > 1 ? ' · V${doc.version}' : ''}\n'
+                          '${doc.uploadedBy?.fullName ?? ''} · ${formatDate(doc.createdAt)}'
+                          '${doc.sharedWithClient ? ' · partagé avec le client' : ''}',
                         ),
                         isThreeLine: true,
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            if (widget.canShareWithClient)
+                              IconButton(
+                                tooltip: doc.sharedWithClient
+                                    ? 'Ne plus partager avec le client'
+                                    : 'Partager avec le client',
+                                icon: Icon(
+                                  doc.sharedWithClient
+                                      ? Icons.visibility
+                                      : Icons.visibility_off_outlined,
+                                ),
+                                onPressed: _isBusy ? null : () => _toggleShare(doc),
+                              ),
+                            // Ronda ne lit que les documents dont le texte a été extrait.
+                            if (doc.isIndexed)
+                              IconButton(
+                                tooltip: 'Demander à Ronda',
+                                icon: const Icon(Icons.auto_awesome_outlined),
+                                onPressed: () =>
+                                    context.push('${Routes.ai}?focus=document:${doc.id}'),
+                              ),
+                          ],
+                        ),
                         onTap: _isBusy ? null : () => _open(doc),
                       );
                     },

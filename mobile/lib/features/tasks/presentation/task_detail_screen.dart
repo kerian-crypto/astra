@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/utils/formatting.dart';
@@ -26,16 +27,19 @@ class TaskDetailScreen extends ConsumerWidget {
     final detail = ref.watch(taskDetailProvider(taskId));
     return Scaffold(
       appBar: AppBar(title: const Text('Tâche')),
-      body: AsyncValueView(
-        value: detail,
-        onRetry: () => ref.invalidate(taskDetailProvider(taskId)),
-        data: (data) {
-          final project = ref.watch(projectDetailProvider(data.task.projectId)).value;
-          return RefreshIndicator(
-            onRefresh: () => ref.refresh(taskDetailProvider(taskId).future),
-            child: _TaskBody(detail: data, project: project),
-          );
-        },
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: AsyncValueView(
+          value: detail,
+          onRetry: () => ref.invalidate(taskDetailProvider(taskId)),
+          data: (data) {
+            final project = ref.watch(projectDetailProvider(data.task.projectId)).value;
+            return RefreshIndicator(
+              onRefresh: () => ref.refresh(taskDetailProvider(taskId).future),
+              child: _TaskBody(detail: data, project: project),
+            );
+          },
+        ),
       ),
     );
   }

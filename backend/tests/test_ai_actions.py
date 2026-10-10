@@ -30,6 +30,8 @@ def reply(answer: str, kind: str = "none", **fields) -> str:
         "time": None,
         "duration_minutes": None,
         "priority": None,
+        "member": None,
+        "role": None,
     } | fields
     return json.dumps({"answer": answer, "action": action})
 
@@ -232,3 +234,87 @@ def test_invalid_proposal_is_dropped_but_the_answer_kept(client, team, llm):
     message = _ask(client, headers, "Crée un projet")["messages"][-1]
 
     assert (message["content"], message["action"]) == ("Voilà.", None)
+
+
+# ---------- Membres de projet ----------
+
+
+def _members(client, team) -> dict[str, str]:
+    detail = client.get(f"{API}/projects/{team['project']['id']}", headers=team["h"]["lead"])
+    return {m["user"]["full_name"]: m["role"] for m in detail.json()["members"]}
+
+
+def test_lead_adds_a_member_by_name_after_validation(client, team, llm, make_user):
+    make_user(full_name="Élodie Martin")
+    llm.replies = [
+        reply(
+            "Je propose d'ajouter Élodie.",
+            "add_project_member",
+            member="elodie",
+            role="contributor",
+        )
+    ]
+    focus = {"type": "project", "id": team["project"]["id"]}
+
+    conversation = _ask(client, team["h"]["lead"], "Ajoute Elodie au projet", focus)
+
+    action = conversation["messages"][-1]["action"]
+    assert action["kind"] == "add_project_member"
+    assert action["title"] == "Ajouter Élodie Martin au projet « MarketCM V2 »"
+    assert "Rôle : Contributeur" in action["details"]
+    assert "Élodie Martin" not in _members(client, team)
+
+    applied = _decide(client, team["h"]["lead"], conversation).json()["action"]
+
+    assert (applied["status"], applied["result_type"]) == ("applied", "project")
+    assert _members(client, team)["Élodie Martin"] == "contributor"
+
+
+def test_role_defaults_to_contributor_and_existing_member_role_can_change(client, team, llm):
+    viewer_name = team["viewer"].full_name
+    llm.replies = [reply("D'accord.", "add_project_member", member=viewer_name, project_number=1)]
+
+    conversation = _ask(client, team["h"]["lead"], f"Passe {viewer_name} contributeur")
+
+    action = conversation["messages"][-1]["action"]
+    assert action["title"] == f"Passer {viewer_name} en Contributeur sur « MarketCM V2 »"
+    _decide(client, team["h"]["lead"], conversation)
+    assert _members(client, team)[viewer_name] == "contributor"
+
+
+def test_only_the_project_lead_gets_a_member_proposal(client, team, llm, make_user):
+    make_user(full_name="Paul Durand")
+    llm.replies = [reply("Ok.", "add_project_member", member="Paul Durand")]
+    focus = {"type": "project", "id": team["project"]["id"]}
+
+    message = _ask(client, team["h"]["contributor"], "Ajoute Paul", focus)["messages"][-1]
+
+    assert message["action"] is None
+    assert "responsable du projet" in message["content"]
+
+
+@pytest.mark.parametrize(
+    ("asked", "expected"),
+    [("Zoé Inconnue", "Je ne trouve aucun membre"), ("Paul", "Plusieurs membres")],
+)
+def test_unknown_or_ambiguous_member_is_not_proposed(client, team, llm, make_user, asked, expected):
+    make_user(full_name="Paul Durand")
+    make_user(full_name="Paul Martin")
+    llm.replies = [reply("Ok.", "add_project_member", member=asked)]
+    focus = {"type": "project", "id": team["project"]["id"]}
+
+    message = _ask(client, team["h"]["lead"], f"Ajoute {asked}", focus)["messages"][-1]
+
+    assert message["action"] is None
+    assert expected in message["content"]
+
+
+def test_member_already_in_the_project_with_that_role_is_not_proposed(client, team, llm):
+    name = team["contributor"].full_name
+    llm.replies = [reply("Ok.", "add_project_member", member=name, role="contributor")]
+    focus = {"type": "project", "id": team["project"]["id"]}
+
+    message = _ask(client, team["h"]["lead"], f"Ajoute {name}", focus)["messages"][-1]
+
+    assert message["action"] is None
+    assert "fait déjà partie" in message["content"]

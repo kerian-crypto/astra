@@ -124,6 +124,7 @@ Règles transverses :
 | 3     | Réunions et décisions (décision → projet/tâches)               | ✅ terminé |
 | 4     | Communication : canaux, discussions projet, notifications, temps réel | ✅ terminé |
 | 5     | Documents, recherche, santé d'Astra, ASTRA AI (Ronda)          | ✅ terminé |
+| 6     | Astra Client (application séparée `client/`) : espace client, livrables, messages, support, factures et paiements déclarés, questionnaire de cadrage — voir [astra-client-integration.md](astra-client-integration.md) | ✅ terminé |
 
 Pistes suivantes : notifications push (FCM/APNs), messages vocaux, pièces jointes
 dans les discussions, mode hors ligne (cache local), bus Redis pour le temps réel

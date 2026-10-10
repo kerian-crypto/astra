@@ -427,6 +427,7 @@ class FakeBackend {
       ('GET', '/documents') => FakeResponse(200, [_document(null)]),
       ('GET', '/projects/p1/documents') => FakeResponse(200, [_document('p1')]),
       ('POST', '/channels/direct') => FakeResponse(200, channelJson()),
+      ('PUT', '/projects/p1/members/u2') => const FakeResponse(200, {}),
       ('PUT', _) when path.startsWith('/messages/') => FakeResponse(200, {
         ...messageJson(),
         'reactions': [

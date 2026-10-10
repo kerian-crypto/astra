@@ -1,5 +1,8 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
+    <!-- Mises à jour publiées par le serveur Astra (hors Play Store) :
+         ouverture de l'installeur Android, confirmée par l'utilisateur. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
     <!-- Messages vocaux du chat. -->
     <uses-permission android:name="android.permission.RECORD_AUDIO"/>
     <!-- Notifications push (Android 13+ : autorisation demandée à la connexion). -->

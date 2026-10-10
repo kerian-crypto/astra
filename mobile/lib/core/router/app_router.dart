@@ -10,6 +10,12 @@ import 'package:astra_hub/features/auth/presentation/register_screen.dart';
 import 'package:astra_hub/features/auth/presentation/registrations_screen.dart';
 import 'package:astra_hub/features/auth/presentation/splash_screen.dart';
 import 'package:astra_hub/features/chat/presentation/channels_screen.dart';
+import 'package:astra_hub/features/clients/presentation/brief_review_screen.dart';
+import 'package:astra_hub/features/clients/presentation/client_conversation_screen.dart';
+import 'package:astra_hub/features/clients/presentation/client_ticket_screen.dart';
+import 'package:astra_hub/features/clients/presentation/clients_screen.dart';
+import 'package:astra_hub/features/clients/presentation/company_screen.dart';
+import 'package:astra_hub/features/clients/presentation/deliverable_screen.dart';
 import 'package:astra_hub/features/chat/presentation/chat_screen.dart';
 import 'package:astra_hub/features/chat/presentation/notifications_screen.dart';
 import 'package:astra_hub/features/home/presentation/home_shell.dart';
@@ -103,6 +109,17 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(path: Routes.health, builder: (_, _) => const HealthScreen()),
       GoRoute(path: Routes.registrations, builder: (_, _) => const RegistrationsScreen()),
       GoRoute(path: Routes.documents, builder: (_, _) => const DocumentsScreen(projectId: null)),
+      GoRoute(
+        path: Routes.clients,
+        builder: (_, _) => const ClientsScreen(),
+        routes: [
+          _detail('companies/:id', (id) => CompanyScreen(companyId: id)),
+          _detail('briefs/:id', (id) => BriefReviewScreen(briefId: id)),
+          _detail('conversations/:id', (id) => ClientConversationScreen(conversationId: id)),
+          _detail('tickets/:id', (id) => ClientTicketScreen(ticketId: id)),
+        ],
+      ),
+      _detail('/deliverables/:id', (id) => DeliverableScreen(deliverableId: id)),
     ],
   );
   ref.onDispose(router.dispose);

@@ -80,6 +80,38 @@ void main() {
     expect(backend.tasks.first['status'], 'in_progress');
   });
 
+  testWidgets('the project lead adds a member with a role', (tester) async {
+    final backend = await pumpApp(tester);
+    await logIn(tester);
+    await openTab(tester, 'Projets');
+    await tester.tap(find.text('MarketCM V2'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text('Ajouter'));
+    await tester.pumpAndSettle();
+    expect(find.text('Ada Lovelace'), findsOneWidget); // déjà membre : seulement dans la page
+    await tester.tap(find.text('Lecteur'));
+    await tester.tap(find.text('Bob Martin'));
+    await tester.pumpAndSettle();
+
+    expect(backend.writes['PUT /projects/p1/members/u2'], {'role': 'viewer'});
+  });
+
+  testWidgets('a document can be sent to Ronda', (tester) async {
+    await pumpApp(tester);
+    await logIn(tester);
+    await openTab(tester, 'Projets');
+    await tester.tap(find.text('MarketCM V2'));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Documents'));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byTooltip('Demander à Ronda'));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Ronda lit : Ce document'), findsOneWidget);
+  });
+
   testWidgets('restores an existing session straight to the dashboard', (tester) async {
     await pumpApp(
       tester,

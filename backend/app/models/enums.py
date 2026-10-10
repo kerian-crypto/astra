@@ -74,6 +74,13 @@ class NotificationKind(StrEnum):
     DOCUMENT_ADDED = "document_added"
     CHANNEL_ADDED = "channel_added"
     REGISTRATION_REQUEST = "registration_request"
+    # Actions venues d'Astra Client.
+    CLIENT_REVIEW = "client_review"
+    CLIENT_MESSAGE = "client_message"
+    CLIENT_TICKET = "client_ticket"
+    PAYMENT_DECLARED = "payment_declared"
+    CLIENT_SIGNUP = "client_signup"
+    CLIENT_BRIEF = "client_brief"
 
 
 class DevicePlatform(StrEnum):
@@ -122,6 +129,7 @@ class AIActionKind(StrEnum):
     SCHEDULE_MEETING = "schedule_meeting"
     CREATE_TASK = "create_task"
     CREATE_DECISION = "create_decision"
+    ADD_PROJECT_MEMBER = "add_project_member"
 
 
 class AIActionStatus(StrEnum):

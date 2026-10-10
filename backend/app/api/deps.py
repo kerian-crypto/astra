@@ -6,11 +6,16 @@ from sqlalchemy.orm import Session
 
 from app.core.config import Settings, get_settings
 from app.core.rate_limit import SlidingWindowRateLimiter
-from app.core.security import InvalidTokenError, decode_access_token
+from app.core.security import (
+    InvalidTokenError,
+    decode_access_token,
+    decode_client_access_token_with_expiry,
+)
 from app.core.storage import LocalFileStorage
 from app.db.session import get_db
-from app.models import User
+from app.models import ClientAccount, User
 from app.services import permissions
+from app.services.client import auth as client_auth
 
 _bearer = HTTPBearer(auto_error=False)
 
@@ -99,3 +104,41 @@ def require_upload_quota(request: Request, user: CurrentUser) -> None:
 
 
 UploadQuota = Depends(require_upload_quota)
+
+
+# ---------- Astra Client ----------
+
+
+def get_current_client(
+    db: DbSession,
+    settings: AppSettings,
+    credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(_bearer)],
+) -> ClientAccount:
+    """Compte Astra Client connecté. Un jeton de membre (autre audience) est
+    refusé ; le compte et son entreprise sont revérifiés à chaque requête."""
+    if credentials is None:
+        raise _unauthorized()
+    try:
+        account_id, _ = decode_client_access_token_with_expiry(credentials.credentials, settings)
+    except InvalidTokenError:
+        raise _unauthorized() from None
+    account = db.get(ClientAccount, account_id)
+    if not client_auth.is_usable(account):
+        raise _unauthorized()
+    return account
+
+
+CurrentClient = Annotated[ClientAccount, Depends(get_current_client)]
+
+
+def require_client_upload_quota(request: Request, account: CurrentClient) -> None:
+    limiter: SlidingWindowRateLimiter = request.app.state.upload_limiter
+    key = f"client:{account.id}"
+    if limiter.is_blocked(key):
+        raise HTTPException(
+            status.HTTP_429_TOO_MANY_REQUESTS, "Trop d'envois de fichiers. Réessayez plus tard."
+        )
+    limiter.record_failure(key)
+
+
+ClientUploadQuota = Depends(require_client_upload_quota)

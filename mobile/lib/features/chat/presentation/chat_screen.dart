@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/widgets/async_value_view.dart';
 import 'package:astra_hub/features/auth/presentation/auth_controller.dart';
@@ -298,36 +299,39 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           ],
         ),
       ),
-      body: Column(
-        children: [
-          Expanded(
-            child: AsyncValueView(
-              value: messages,
-              onRetry: () => ref.invalidate(channelMessagesProvider(widget.channelId)),
-              data: (items) => items.isEmpty
-                  ? const EmptyState(icon: Icons.chat_outlined, message: 'Aucun message.')
-                  : ListView.builder(
-                      controller: _scroll,
-                      reverse: true,
-                      padding: const EdgeInsets.all(12),
-                      itemCount: items.length,
-                      itemBuilder: (_, index) {
-                        final message = items[index];
-                        final replied = message.replyToId == null
-                            ? null
-                            : items.where((m) => m.id == message.replyToId).firstOrNull;
-                        return MessageBubble(
-                          message: message,
-                          isMine: message.author?.id == meId,
-                          repliedTo: replied,
-                          onAction: (action) => _onAction(message, action),
-                        );
-                      },
-                    ),
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: Column(
+          children: [
+            Expanded(
+              child: AsyncValueView(
+                value: messages,
+                onRetry: () => ref.invalidate(channelMessagesProvider(widget.channelId)),
+                data: (items) => items.isEmpty
+                    ? const EmptyState(icon: Icons.chat_outlined, message: 'Aucun message.')
+                    : ListView.builder(
+                        controller: _scroll,
+                        reverse: true,
+                        padding: const EdgeInsets.all(12),
+                        itemCount: items.length,
+                        itemBuilder: (_, index) {
+                          final message = items[index];
+                          final replied = message.replyToId == null
+                              ? null
+                              : items.where((m) => m.id == message.replyToId).firstOrNull;
+                          return MessageBubble(
+                            message: message,
+                            isMine: message.author?.id == meId,
+                            repliedTo: replied,
+                            onAction: (action) => _onAction(message, action),
+                          );
+                        },
+                      ),
+              ),
             ),
-          ),
-          if (canPost) _composer(context) else _readOnlyNotice(context),
-        ],
+            if (canPost) _composer(context) else _readOnlyNotice(context),
+          ],
+        ),
       ),
     );
   }

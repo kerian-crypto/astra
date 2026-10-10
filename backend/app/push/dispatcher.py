@@ -13,9 +13,9 @@ from typing import Protocol
 from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
-from app.models import DeviceToken, User
+from app.models import ClientAccount, ClientDeviceToken, DeviceToken, User
 from app.push.fcm import SendResult
-from app.push.message import PushMessage
+from app.push.message import PushAudience, PushMessage
 
 logger = logging.getLogger(__name__)
 
@@ -31,9 +31,19 @@ class PushSink(Protocol):
 
 
 class PushDispatcher:
-    def __init__(self, session_factory: sessionmaker[Session], sender: PushSender) -> None:
+    """`sender` : projet Firebase d'Astra Hub ; `client_sender` : projet
+    Firebase d'Astra Client. Un jeton n'est valable que pour son projet :
+    chaque audience a donc son propre émetteur (absent = push désactivé)."""
+
+    def __init__(
+        self,
+        session_factory: sessionmaker[Session],
+        sender: PushSender | None,
+        client_sender: PushSender | None = None,
+    ) -> None:
         self._session_factory = session_factory
         self._sender = sender
+        self._client_sender = client_sender
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="push")
 
     def submit(self, user_ids: frozenset[uuid.UUID], message: PushMessage) -> None:
@@ -41,7 +51,9 @@ class PushDispatcher:
 
     def shutdown(self) -> None:
         self._executor.shutdown(wait=False, cancel_futures=True)
-        self._sender.close()
+        for sender in (self._sender, self._client_sender):
+            if sender is not None:
+                sender.close()
 
     def _deliver_safely(self, user_ids: frozenset[uuid.UUID], message: PushMessage) -> None:
         try:
@@ -53,20 +65,36 @@ class PushDispatcher:
     def deliver(self, user_ids: Iterable[uuid.UUID], message: PushMessage) -> int:
         """Envoie à tous les appareils des membres actifs ; renvoie le nombre
         d'envois réussis et oublie les jetons que FCM déclare invalides."""
+        is_client = message.audience == PushAudience.CLIENT
+        sender = self._client_sender if is_client else self._sender
+        if sender is None:
+            return 0
+        table = ClientDeviceToken if is_client else DeviceToken
         with self._session_factory() as db:
-            devices = db.execute(
-                select(DeviceToken.id, DeviceToken.token)
-                .join(User, User.id == DeviceToken.user_id)
-                .where(DeviceToken.user_id.in_(set(user_ids)), User.is_active.is_(True))
-            ).all()
-            results = {device_id: self._sender.send(token, message) for device_id, token in devices}
+            if is_client:
+                query = (
+                    select(ClientDeviceToken.id, ClientDeviceToken.token)
+                    .join(ClientAccount, ClientAccount.id == ClientDeviceToken.account_id)
+                    .where(
+                        ClientDeviceToken.account_id.in_(set(user_ids)),
+                        ClientAccount.is_active.is_(True),
+                    )
+                )
+            else:
+                query = (
+                    select(DeviceToken.id, DeviceToken.token)
+                    .join(User, User.id == DeviceToken.user_id)
+                    .where(DeviceToken.user_id.in_(set(user_ids)), User.is_active.is_(True))
+                )
+            devices = db.execute(query).all()
+            results = {device_id: sender.send(token, message) for device_id, token in devices}
             dead = [
                 device_id
                 for device_id, result in results.items()
                 if result == SendResult.INVALID_TOKEN
             ]
             if dead:
-                db.execute(delete(DeviceToken).where(DeviceToken.id.in_(dead)))
+                db.execute(delete(table).where(table.id.in_(dead)))
                 db.commit()
         return sum(result == SendResult.SENT for result in results.values())
 

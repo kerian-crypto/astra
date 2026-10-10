@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'package:astra_hub/core/layout/responsive.dart';
 import 'package:astra_hub/core/network/api_exception.dart';
 import 'package:astra_hub/core/utils/formatting.dart';
 import 'package:astra_hub/core/widgets/async_value_view.dart';
@@ -80,89 +81,92 @@ class RegistrationsScreen extends ConsumerWidget {
     final pending = ref.watch(pendingRegistrationsProvider);
     return Scaffold(
       appBar: AppBar(title: const Text('Demandes d\'inscription')),
-      body: RefreshIndicator(
-        onRefresh: () => ref.refresh(pendingRegistrationsProvider.future),
-        child: AsyncValueView(
-          value: pending,
-          onRetry: () => ref.invalidate(pendingRegistrationsProvider),
-          data: (items) => items.isEmpty
-              ? const EmptyState(
-                  icon: Icons.how_to_reg_outlined,
-                  message: 'Aucune demande en attente.',
-                )
-              : ListView.builder(
-                  padding: const EdgeInsets.all(16),
-                  itemCount: items.length,
-                  itemBuilder: (_, index) {
-                    final request = items[index];
-                    final member = request.member;
-                    return Card(
-                      margin: const EdgeInsets.only(bottom: 12),
-                      child: Padding(
-                        padding: const EdgeInsets.all(16),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                MemberAvatar(member: member, radius: 28),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        member.fullName,
-                                        style: Theme.of(context).textTheme.titleMedium,
-                                      ),
-                                      Text(member.jobTitle ?? ''),
-                                      Text(
-                                        member.email,
-                                        style: Theme.of(context).textTheme.bodySmall,
-                                      ),
-                                    ],
+      body: ResponsiveCenter(
+        maxWidth: Breakpoints.readingMaxWidth,
+        child: RefreshIndicator(
+          onRefresh: () => ref.refresh(pendingRegistrationsProvider.future),
+          child: AsyncValueView(
+            value: pending,
+            onRetry: () => ref.invalidate(pendingRegistrationsProvider),
+            data: (items) => items.isEmpty
+                ? const EmptyState(
+                    icon: Icons.how_to_reg_outlined,
+                    message: 'Aucune demande en attente.',
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.all(16),
+                    itemCount: items.length,
+                    itemBuilder: (_, index) {
+                      final request = items[index];
+                      final member = request.member;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 12),
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  MemberAvatar(member: member, radius: 28),
+                                  const SizedBox(width: 16),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          member.fullName,
+                                          style: Theme.of(context).textTheme.titleMedium,
+                                        ),
+                                        Text(member.jobTitle ?? ''),
+                                        Text(
+                                          member.email,
+                                          style: Theme.of(context).textTheme.bodySmall,
+                                        ),
+                                      ],
+                                    ),
                                   ),
+                                ],
+                              ),
+                              const SizedBox(height: 12),
+                              Text('Rôle souhaité : ${request.requestedAccessLevel.label}'),
+                              if (member.skills.isNotEmpty) ...[
+                                const SizedBox(height: 8),
+                                Wrap(
+                                  spacing: 6,
+                                  runSpacing: 6,
+                                  children: [for (final s in member.skills) Chip(label: Text(s))],
                                 ),
                               ],
-                            ),
-                            const SizedBox(height: 12),
-                            Text('Rôle souhaité : ${request.requestedAccessLevel.label}'),
-                            if (member.skills.isNotEmpty) ...[
-                              const SizedBox(height: 8),
-                              Wrap(
-                                spacing: 6,
-                                runSpacing: 6,
-                                children: [for (final s in member.skills) Chip(label: Text(s))],
-                              ),
-                            ],
-                            if (member.createdAt != null) ...[
-                              const SizedBox(height: 8),
-                              Text(
-                                'Demande du ${formatDate(member.createdAt!)}',
-                                style: Theme.of(context).textTheme.bodySmall,
-                              ),
-                            ],
-                            const SizedBox(height: 8),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                TextButton(
-                                  onPressed: () => _reject(context, ref, request),
-                                  child: const Text('Refuser'),
-                                ),
-                                const SizedBox(width: 8),
-                                FilledButton(
-                                  onPressed: () => _approve(context, ref, request),
-                                  child: const Text('Valider'),
+                              if (member.createdAt != null) ...[
+                                const SizedBox(height: 8),
+                                Text(
+                                  'Demande du ${formatDate(member.createdAt!)}',
+                                  style: Theme.of(context).textTheme.bodySmall,
                                 ),
                               ],
-                            ),
-                          ],
+                              const SizedBox(height: 8),
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.end,
+                                children: [
+                                  TextButton(
+                                    onPressed: () => _reject(context, ref, request),
+                                    child: const Text('Refuser'),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  FilledButton(
+                                    onPressed: () => _approve(context, ref, request),
+                                    child: const Text('Valider'),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ),
-                    );
-                  },
-                ),
+                      );
+                    },
+                  ),
+          ),
         ),
       ),
     );

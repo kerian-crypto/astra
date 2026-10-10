@@ -39,6 +39,9 @@ from app.services import user_service  # noqa: E402
 
 DEFAULT_PASSWORD = "correct-horse-battery"
 
+# Fixtures du domaine Astra Client (client_world, make_client_account).
+pytest_plugins = ["tests.client_fixtures"]
+
 
 @pytest.fixture(scope="session", autouse=True)
 def _fast_password_hashing() -> Iterator[None]:
@@ -95,13 +98,14 @@ def make_user(db: Session) -> Callable[..., User]:
         access_level: AccessLevel = AccessLevel.MEMBER,
         email: str | None = None,
         password: str = DEFAULT_PASSWORD,
+        full_name: str | None = None,
         **extra: object,
     ) -> User:
         index = next(counter)
         data = UserCreate(
             email=email or f"member{index}@astra.example.com",
             password=password,
-            full_name=f"Membre {index}",
+            full_name=full_name or f"Membre {index}",
             access_level=access_level,
             **extra,
         )

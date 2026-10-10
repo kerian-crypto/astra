@@ -7,10 +7,11 @@ import 'package:astra_hub/core/router/routes.dart';
 import 'package:astra_hub/core/utils/formatting.dart';
 import 'package:astra_hub/core/widgets/async_value_view.dart';
 import 'package:astra_hub/features/chat/data/chat_repository.dart';
+import 'package:astra_hub/features/clients/presentation/project_client_section.dart';
 import 'package:astra_hub/features/knowledge/presentation/documents_screen.dart';
-import 'package:astra_hub/features/members/presentation/member_avatar.dart';
 import 'package:astra_hub/features/projects/data/project.dart';
 import 'package:astra_hub/features/projects/data/project_repository.dart';
+import 'package:astra_hub/features/projects/presentation/project_members.dart';
 import 'package:astra_hub/features/projects/presentation/project_widgets.dart';
 import 'package:astra_hub/features/tasks/data/task_repository.dart';
 import 'package:astra_hub/features/tasks/presentation/kanban_board.dart';
@@ -75,7 +76,11 @@ class ProjectDetailScreen extends ConsumerWidget {
                 child: _Overview(detail: data),
               ),
               KanbanBoard(project: data),
-              DocumentsList(projectId: projectId, canUpload: data.canContribute),
+              DocumentsList(
+                projectId: projectId,
+                canUpload: data.canContribute,
+                canShareWithClient: data.isLead && data.project.clientCompanyId != null,
+              ),
               _ActivityFeed(projectId: projectId),
             ],
           ),
@@ -114,16 +119,8 @@ class _Overview extends StatelessWidget {
           _Section(title: 'Échéance', body: formatDate(project.dueDate!)),
         if (project.budget != null) _Section(title: 'Budget', body: project.budget!),
         const SizedBox(height: 24),
-        Text('Membres (${detail.members.length})', style: textTheme.titleMedium),
-        const SizedBox(height: 8),
-        for (final m in detail.members)
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: MemberAvatar(member: m.member),
-            title: Text(m.member.fullName),
-            subtitle: Text(m.member.jobTitle ?? m.member.email),
-            trailing: Text(m.role.label, style: textTheme.bodySmall),
-          ),
+        ProjectMembersSection(detail: detail),
+        ProjectClientSection(detail: detail),
       ],
     );
   }

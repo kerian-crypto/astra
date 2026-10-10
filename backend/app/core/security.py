@@ -12,6 +12,10 @@ from app.core.config import Settings
 ACCESS_TOKEN_TYPE = "access"  # noqa: S105
 TOKEN_ISSUER = "astra-hub-api"  # noqa: S105
 TOKEN_AUDIENCE = "astra-hub-mobile"  # noqa: S105
+# Astra Client : audience et type distincts. Un jeton client est refusé par
+# toutes les routes d'Astra Hub, et inversement.
+CLIENT_ACCESS_TOKEN_TYPE = "client_access"  # noqa: S105
+CLIENT_TOKEN_AUDIENCE = "astra-client"  # noqa: S105
 REFRESH_TOKEN_BYTES = 48
 
 _password_hash = PasswordHash.recommended()
@@ -33,13 +37,19 @@ def verify_password(password: str, password_hash: str) -> bool:
     return _password_hash.verify(password, password_hash)
 
 
-def create_access_token(user_id: uuid.UUID, settings: Settings) -> str:
+def create_access_token(
+    user_id: uuid.UUID,
+    settings: Settings,
+    *,
+    audience: str = TOKEN_AUDIENCE,
+    token_type: str = ACCESS_TOKEN_TYPE,
+) -> str:
     now = datetime.now(UTC)
     payload = {
         "sub": str(user_id),
-        "type": ACCESS_TOKEN_TYPE,
+        "type": token_type,
         "iss": TOKEN_ISSUER,
-        "aud": TOKEN_AUDIENCE,
+        "aud": audience,
         "iat": now,
         "exp": now + timedelta(minutes=settings.ACCESS_TOKEN_EXPIRE_MINUTES),
     }
@@ -50,20 +60,40 @@ def decode_access_token(token: str, settings: Settings) -> uuid.UUID:
     return decode_access_token_with_expiry(token, settings)[0]
 
 
-def decode_access_token_with_expiry(token: str, settings: Settings) -> tuple[uuid.UUID, datetime]:
+def create_client_access_token(account_id: uuid.UUID, settings: Settings) -> str:
+    return create_access_token(
+        account_id, settings, audience=CLIENT_TOKEN_AUDIENCE, token_type=CLIENT_ACCESS_TOKEN_TYPE
+    )
+
+
+def decode_client_access_token_with_expiry(
+    token: str, settings: Settings
+) -> tuple[uuid.UUID, datetime]:
+    return decode_access_token_with_expiry(
+        token, settings, audience=CLIENT_TOKEN_AUDIENCE, token_type=CLIENT_ACCESS_TOKEN_TYPE
+    )
+
+
+def decode_access_token_with_expiry(
+    token: str,
+    settings: Settings,
+    *,
+    audience: str = TOKEN_AUDIENCE,
+    token_type: str = ACCESS_TOKEN_TYPE,
+) -> tuple[uuid.UUID, datetime]:
     try:
         payload = jwt.decode(
             token,
             settings.SECRET_KEY,
             algorithms=[settings.JWT_ALGORITHM],
             issuer=TOKEN_ISSUER,
-            audience=TOKEN_AUDIENCE,
+            audience=audience,
             options={"require": ["sub", "exp", "iat", "iss", "aud", "type"]},
         )
     except jwt.PyJWTError as exc:
         raise InvalidTokenError from exc
 
-    if payload.get("type") != ACCESS_TOKEN_TYPE:
+    if payload.get("type") != token_type:
         raise InvalidTokenError
     try:
         return uuid.UUID(payload["sub"]), datetime.fromtimestamp(payload["exp"], UTC)

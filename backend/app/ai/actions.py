@@ -6,14 +6,16 @@ l'écarte) quand le membre valide, via les services habituels et donc avec ses
 droits à lui.
 """
 
+import unicodedata
 import uuid
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, time, timedelta
 
 from pydantic import BaseModel, ValidationError
+from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from app.models import AIConversation, AIMessage, Meeting, Project, Task, User
+from app.models import AIConversation, AIMessage, Meeting, Project, ProjectMember, Task, User
 from app.models.enums import AIActionKind, AIActionStatus, ProjectRole
 from app.schemas.ai import AIFocus, DraftAction, ProposedAction, Source
 from app.schemas.meeting import DecisionCreate, MeetingCreate
@@ -30,6 +32,12 @@ from app.services.errors import ConflictError, NotFoundError
 
 DEFAULT_MEETING_TIME = time(9, 0)
 DEFAULT_MEETING_MINUTES = 60
+MAX_LISTED_NAMES = 5
+ROLE_LABELS = {
+    ProjectRole.VIEWER: "Lecteur",
+    ProjectRole.CONTRIBUTOR: "Contributeur",
+    ProjectRole.LEAD: "Responsable",
+}
 
 
 @dataclass(frozen=True)
@@ -177,6 +185,57 @@ def _decision(draft: DraftAction, project: Project | None) -> Preparation:
     return Preparation(_proposal(AIActionKind.CREATE_DECISION, title, details, payload))
 
 
+def _normalize(text: str) -> str:
+    """Minuscules, sans accents ni espaces superflus : « Élodie » == « elodie »."""
+    decomposed = unicodedata.normalize("NFKD", text)
+    bare = "".join(ch for ch in decomposed if not unicodedata.combining(ch))
+    return " ".join(bare.lower().split())
+
+
+def _find_members(db: Session, name: str) -> list[User]:
+    """Membres actifs désignés par leur nom complet, leur e-mail ou une partie du nom."""
+    wanted = _normalize(name)
+    if not wanted:
+        return []
+    users = db.scalars(select(User).where(User.is_active)).all()
+    exact = [u for u in users if wanted in (_normalize(u.full_name), u.email.lower())]
+    if exact:
+        return exact
+    words = wanted.split()
+    return [u for u in users if all(w in _normalize(u.full_name).split() for w in words)]
+
+
+def _member(db: Session, user: User, draft: DraftAction, project: Project | None) -> Preparation:
+    if project is None:
+        return Preparation(note="Dites-moi à quel projet ajouter ce membre.")
+    if permissions.get_project_role(db, user, project) != ProjectRole.LEAD:
+        return Preparation(note="Seul le responsable du projet peut gérer ses membres.")
+    matches = _find_members(db, draft.member or "")
+    if not matches:
+        return Preparation(note=f"Je ne trouve aucun membre « {draft.member or ''} » dans Astra.")
+    if len(matches) > 1:
+        names = ", ".join(sorted(m.full_name for m in matches)[:MAX_LISTED_NAMES])
+        return Preparation(note=f"Plusieurs membres correspondent ({names}) : précisez lequel.")
+    member = matches[0]
+    role = draft.role or ProjectRole.CONTRIBUTOR
+    label = ROLE_LABELS[role]
+    current = db.scalar(
+        select(ProjectMember.role).where(
+            ProjectMember.project_id == project.id, ProjectMember.user_id == member.id
+        )
+    )
+    if current == role:
+        return Preparation(note=f"{member.full_name} fait déjà partie du projet ({label.lower()}).")
+    title = (
+        f"Ajouter {member.full_name} au projet « {project.name} »"
+        if current is None
+        else f"Passer {member.full_name} en {label} sur « {project.name} »"
+    )
+    details = [f"Projet : {project.name}", f"Rôle : {label}", _optional("Poste", member.job_title)]
+    payload = {"project_id": str(project.id), "user_id": str(member.id), "role": role.value}
+    return Preparation(_proposal(AIActionKind.ADD_PROJECT_MEMBER, title, details, payload))
+
+
 def prepare(
     db: Session,
     user: User,
@@ -197,6 +256,8 @@ def prepare(
                 return _meeting(draft, project, utc_offset_minutes)
             case "create_task":
                 return _task(draft, project)
+            case "add_project_member":
+                return _member(db, user, draft, project)
             case _:
                 return _decision(draft, project)
     except ValidationError:
@@ -226,6 +287,14 @@ def _execute(db: Session, user: User, action: ProposedAction) -> tuple[str, uuid
                 db, user, uuid.UUID(payload["project_id"]), DecisionCreate(**payload["decision"])
             )
             return "decision", decision.id
+        case AIActionKind.ADD_PROJECT_MEMBER:
+            project, _ = project_service.get_accessible_project(
+                db, user, uuid.UUID(payload["project_id"]), ProjectRole.LEAD
+            )
+            project_service.upsert_member(
+                db, user, project, uuid.UUID(payload["user_id"]), ProjectRole(payload["role"])
+            )
+            return "project", project.id
 
 
 def decide(

@@ -43,6 +43,9 @@ services:
     volumes:
       - uploads:/data/uploads
       - ./secrets:/run/secrets/astra:ro
+      # Mises à jour Android (APK + release.json), hors du code synchronisé :
+      # publiées par infra/aws/publish-release.sh.
+      - ../releases:/data/releases:ro
     ports:
       - "8000:8000"
 

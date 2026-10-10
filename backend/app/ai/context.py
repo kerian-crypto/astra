@@ -9,12 +9,15 @@ from sqlalchemy.orm import Session
 
 from app.ai import activity
 from app.ai import focus as ai_focus
-from app.models import Project, Task, User
+from app.models import Document, Project, Task, User
 from app.schemas.ai import AIFocus, Source
+from app.schemas.search import SearchHit
 from app.services import permissions, search_service, work_service
 
 MAX_PROJECTS = 20
 MAX_SEARCH_HITS = 8
+MAX_DOCUMENT_EXCERPTS = 2
+DOCUMENT_START_CHARS = 1_200  # début du document : utile pour « résume-moi … »
 
 
 @dataclass
@@ -55,6 +58,26 @@ def _task_line(builder: ContextBuilder, task: Task, projects: dict) -> str:
         f"[{number}] {task.title} — projet {project}, statut {task.status}, "
         f"priorité {task.priority}{due}"
     )
+
+
+def _document_excerpts(
+    db: Session, user: User, question: str, builder: ContextBuilder, hits: list[SearchHit]
+) -> list[str]:
+    """Début et passages pertinents des documents les mieux classés : l'extrait de
+    recherche (une trentaine de mots) ne suffit pas pour répondre sur un document."""
+    numbers = {(s.type, s.id): s.number for s in builder.sources}
+    lines = []
+    for hit in [h for h in hits if h.type == "document"][:MAX_DOCUMENT_EXCERPTS]:
+        document = db.get(Document, hit.id)
+        if document is None or not document.text_content:
+            continue
+        start = " ".join(document.text_content[:DOCUMENT_START_CHARS].split())
+        passages = " ".join(search_service.document_passages(db, user, hit.id, question).split())
+        lines.append(
+            f"[{numbers[(hit.type, hit.id)]}] « {document.title} » ({document.filename})\n"
+            f"Début : {start}\nPassages pertinents : {passages}"
+        )
+    return lines
 
 
 def build(
@@ -113,13 +136,20 @@ def build(
         )
     builder.section("Projets auxquels j'ai accès", project_lines)
 
-    hits = search_service.search(db, user, question)[:MAX_SEARCH_HITS]
+    hits = (
+        search_service.search(db, user, question)[:MAX_SEARCH_HITS]
+        or (search_service.search(db, user, question, match_any=True)[:MAX_SEARCH_HITS])
+    )
     hit_lines = []
     for hit in hits:
         number = builder.add_source(hit.type, hit.id, hit.title)
         project = f" (projet {projects[hit.project_id]})" if hit.project_id in projects else ""
         hit_lines.append(f"[{number}] {hit.type} « {hit.title} »{project} : {hit.snippet}")
     builder.section("Extraits trouvés dans Astra pour cette question", hit_lines)
+    builder.section(
+        "Contenu des documents trouvés",
+        _document_excerpts(db, user, question, builder, hits),
+    )
 
     builder.section("Activité récente dans les projets", activity.events(db, user))
     builder.section("Activité récente : derniers messages", activity.messages(db, user))

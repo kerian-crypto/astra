@@ -5,6 +5,7 @@ from sqlalchemy.dialects.postgresql import TSVECTOR
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.db.base import Base, TimestampMixin, UUIDPrimaryKeyMixin, string_enum
+from app.models.client_enums import DocumentVisibility
 from app.models.enums import DocumentKind
 from app.models.user import User
 
@@ -40,5 +41,17 @@ class Document(UUIDPrimaryKeyMixin, TimestampMixin, Base):
             persisted=True,
         ),
     )
+
+    # Astra Client : seuls les documents `client` d'un projet rattaché à une
+    # entreprise cliente lui sont visibles. Tout document est interne par défaut.
+    visibility: Mapped[DocumentVisibility] = mapped_column(
+        string_enum(DocumentVisibility),
+        default=DocumentVisibility.INTERNAL,
+        server_default=DocumentVisibility.INTERNAL.value,
+    )
+    # Versions successives d'un même document : même groupe, numéro croissant.
+    # Le groupe d'un document initial est son propre identifiant.
+    version_group_id: Mapped[uuid.UUID | None] = mapped_column(index=True)
+    version: Mapped[int] = mapped_column(default=1, server_default="1")
 
     uploaded_by: Mapped[User | None] = relationship(lazy="joined")

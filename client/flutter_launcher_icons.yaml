@@ -1,0 +1,11 @@
+# Icône d'Astra Client : le « A » d'Astra sur le dégradé bleu nuit → sarcelle,
+# avec une pastille ambre qui la distingue d'Astra Hub.
+# Régénérer après modification : dart run flutter_launcher_icons
+flutter_launcher_icons:
+  image_path: "assets/branding/app_icon.png"
+  android: "ic_launcher"
+  ios: true
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  adaptive_icon_background: "#0B2239"
+  adaptive_icon_foreground: "assets/branding/app_icon_foreground.png"

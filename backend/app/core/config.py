@@ -61,6 +61,20 @@ class Settings(BaseSettings):
     # Notifications push : chemin du fichier JSON du compte de service
     # Firebase (secret, monté dans le conteneur). Vide = push désactivé.
     FIREBASE_CREDENTIALS_FILE: str | None = None
+    # Astra Client a son propre projet Firebase : sa propre clé de compte de
+    # service. Vide = pas de push vers les téléphones des clients.
+    FIREBASE_CLIENT_CREDENTIALS_FILE: str | None = None
+
+    # Astra Client : liens d'activation et de nouveau mot de passe, générés
+    # dans Astra Hub et transmis au client par le membre (pas d'email au MVP).
+    CLIENT_APP_LINK_BASE: str = "astraclient://app/activate"
+    CLIENT_INVITATION_TTL_HOURS: int = Field(default=72, gt=0)
+    # Preuves de paiement, pièces jointes des messages et des validations.
+    MAX_CLIENT_UPLOAD_BYTES: int = Field(default=20 * 1024 * 1024, gt=0)
+
+    # Mises à jour Android : APK et release.json publiés par
+    # infra/aws/publish-release.sh (dossier monté en lecture seule).
+    RELEASES_DIR: str = "/data/releases"
 
     BACKEND_CORS_ORIGINS: Annotated[list[str], NoDecode] = []
 

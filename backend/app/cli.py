@@ -3,6 +3,7 @@
 Usage :
     python -m app.cli create-admin --email admin@astra.example --name "Admin Astra"
     python -m app.cli seed-channels
+    python -m app.cli reindex-documents
 
 Le mot de passe est lu depuis ASTRA_ADMIN_PASSWORD ou demandé de façon
 interactive ; il n'est jamais passé en argument (visible dans `ps`).
@@ -16,11 +17,13 @@ import sys
 from pydantic import ValidationError
 from sqlalchemy import select
 
+from app.core.config import get_settings
+from app.core.storage import LocalFileStorage
 from app.db.session import get_session_factory
-from app.models import Channel
+from app.models import Channel, Document
 from app.models.enums import AccessLevel, ChannelKind
 from app.schemas.user import UserCreate
-from app.services import user_service
+from app.services import file_types, user_service
 from app.services.errors import ConflictError
 
 
@@ -82,6 +85,26 @@ def seed_channels() -> None:
         db.commit()
 
 
+def reindex_documents() -> None:
+    """Extrait le texte des documents non indexés (ex. Word/Excel envoyés avant
+    la prise en charge de ces formats) : recherche et ASTRA AI les lisent ensuite."""
+    storage = LocalFileStorage(get_settings().UPLOAD_DIR)
+    with get_session_factory()() as db:
+        pending = db.scalars(select(Document).where(Document.text_content.is_(None))).all()
+        indexed = 0
+        for document in pending:
+            file_type = file_types.resolve(document.filename)
+            path = storage.path(document.storage_key)
+            if file_type is None or not path.exists():
+                continue
+            document.text_content = file_types.extract_text(file_type, path)
+            if document.text_content is not None:
+                indexed += 1
+                print(f"Indexé : {document.title}")
+        db.commit()
+    print(f"{indexed} document(s) indexé(s) sur {len(pending)} sans texte.")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(prog="astra-hub")
     commands = parser.add_subparsers(dest="command", required=True)
@@ -89,12 +112,15 @@ def main() -> None:
     admin.add_argument("--email", required=True)
     admin.add_argument("--name", required=True)
     commands.add_parser("seed-channels", help="Créer les canaux publics par défaut")
+    commands.add_parser("reindex-documents", help="Indexer le texte des documents non indexés")
 
     args = parser.parse_args()
     if args.command == "create-admin":
         create_admin(args.email, args.name)
     elif args.command == "seed-channels":
         seed_channels()
+    elif args.command == "reindex-documents":
+        reindex_documents()
 
 
 if __name__ == "__main__":

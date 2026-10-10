@@ -17,11 +17,17 @@ abstract final class Routes {
   static const health = '/health';
   static const documents = '/documents';
   static const registrations = '/admin/registrations';
+  static const clients = '/clients';
 
   static String project(String id) => '$projects/$id';
   static String chat(String channelId) => '$messages/$channelId';
   static String meeting(String id) => '$meetings/$id';
   static String task(String id) => '/tasks/$id';
+  static String clientCompany(String id) => '$clients/companies/$id';
+  static String clientBrief(String id) => '$clients/briefs/$id';
+  static String clientConversation(String id) => '$clients/conversations/$id';
+  static String clientTicket(String id) => '$clients/tickets/$id';
+  static String deliverable(String id) => '/deliverables/$id';
 
   /// Écran d'une entité ciblée par une notification (liste ou push).
   /// `null` : rien à ouvrir (ex. réunion supprimée).
@@ -32,6 +38,13 @@ abstract final class Routes {
     'project' => project(entityId),
     'user' => registrations,
     'ai_conversation' => ai,
+    // Astra Client
+    'deliverable' => deliverable(entityId),
+    'client_conversation' => clientConversation(entityId),
+    'support_ticket' => clientTicket(entityId),
+    'payment_declaration' => clients,
+    'project_brief' => clientBrief(entityId),
+    'client_company' => clientCompany(entityId),
     _ => null,
   };
 }

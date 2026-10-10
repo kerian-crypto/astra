@@ -168,7 +168,7 @@ def post_message(db: Session, user: User, channel: Channel, data: MessageCreate)
     return message
 
 
-def _safe_filename(filename: str) -> str:
+def safe_filename(filename: str) -> str:
     """Nom affiché : sans chemin ni caractères de contrôle."""
     name = filename.replace("\\", "/").rsplit("/", 1)[-1]
     name = "".join(ch for ch in name if ch.isprintable() and ch not in '"<>|:*?')
@@ -214,7 +214,7 @@ def post_attachment(
         mentioned_user_ids=[],
         attachment_kind=kind,
         attachment_key=stored.key,
-        attachment_name=_safe_filename(filename),
+        attachment_name=safe_filename(filename),
         attachment_content_type=file_type.content_type,
         attachment_size=stored.size_bytes,
         attachment_duration_ms=duration_ms,

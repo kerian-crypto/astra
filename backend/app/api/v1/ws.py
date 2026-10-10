@@ -10,6 +10,7 @@ Protocole :
 """
 
 import json
+import uuid
 from datetime import UTC, datetime
 
 import anyio
@@ -20,7 +21,7 @@ from app.core.config import get_settings
 from app.core.security import InvalidTokenError, decode_access_token_with_expiry
 from app.db.session import get_session_factory
 from app.models import User
-from app.realtime.hub import hub
+from app.realtime.hub import RealtimeHub, hub
 
 router = APIRouter()
 
@@ -54,8 +55,15 @@ async def realtime(websocket: WebSocket) -> None:
     except (InvalidTokenError, TimeoutError, ValueError, WebSocketDisconnect):
         await websocket.close(code=CLOSE_UNAUTHORIZED)
         return
+    await serve_session(websocket, hub, user_id, expires_at)
 
-    queue = hub.connect(user_id)
+
+async def serve_session(
+    websocket: WebSocket, target: RealtimeHub, subscriber_id: uuid.UUID, expires_at: datetime
+) -> None:
+    """Pousse les événements du hub jusqu'à la déconnexion ou l'expiration
+    du jeton. Partagé par Astra Hub (/ws) et Astra Client (/client/ws)."""
+    queue = target.connect(subscriber_id)
     await websocket.send_json({"type": "ready"})
     try:
         async with anyio.create_task_group() as tasks:
@@ -82,4 +90,4 @@ async def realtime(websocket: WebSocket) -> None:
     except* WebSocketDisconnect:
         pass
     finally:
-        hub.disconnect(user_id, queue)
+        target.disconnect(subscriber_id, queue)
