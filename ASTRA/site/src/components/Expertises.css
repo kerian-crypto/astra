@@ -1,0 +1,90 @@
+.expertises {
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.expertises .eyebrow,
+.offers .eyebrow,
+.faq .eyebrow {
+  color: var(--indigo-ink);
+}
+
+.expertises .lead,
+.offers .lead {
+  color: var(--slate);
+}
+
+.expertises-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(3rem, 6vw, 6rem);
+  align-items: start;
+}
+
+.expertises-head {
+  position: sticky;
+  top: 120px;
+}
+
+.skill {
+  display: grid;
+  grid-template-columns: minmax(0, 15rem) minmax(0, 1fr);
+  gap: 0.75rem 2.5rem;
+  padding: 2.2rem 0;
+  border-top: 1px solid var(--line-light);
+}
+
+.skill:last-child {
+  border-bottom: 1px solid var(--line-light);
+}
+
+.skill h3 {
+  transition: color 0.3s var(--ease), transform 0.3s var(--ease);
+}
+
+.skill:hover h3 {
+  color: var(--indigo-ink);
+  transform: translateX(4px);
+}
+
+.skill p {
+  color: var(--slate);
+}
+
+.tags {
+  grid-column: 2;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  margin-top: 0.4rem;
+}
+
+.tags li {
+  padding: 0.28rem 0.6rem;
+  border: 1px solid var(--line-light);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.02em;
+  color: var(--slate);
+}
+
+@media (max-width: 1080px) {
+  .skill {
+    grid-template-columns: 1fr;
+  }
+
+  .tags {
+    grid-column: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .expertises-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .expertises-head {
+    position: static;
+  }
+}

@@ -1,0 +1,342 @@
+/* ——— Tokens ——— */
+:root {
+  --night: #070b18;
+  --night-2: #0c1226;
+  --night-3: #131b38;
+  --line-dark: rgba(140, 160, 255, 0.14);
+  --star: #f2f4fa;
+  --haze: #97a2c4;
+
+  --mist: #eef1f7;
+  --mist-2: #e1e6f0;
+  --line-light: rgba(11, 16, 36, 0.12);
+  --ink: #0b1024;
+  --slate: #505a78;
+  --indigo-ink: #3240d4;
+
+  --signal: #38c6f4;
+  --orbit: #4f5bf2;
+
+  --font-display: 'Unbounded', 'Arial Black', sans-serif;
+  --font-body: 'Onest', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'IBM Plex Mono', ui-monospace, 'SFMono-Regular', monospace;
+
+  --fs-display: clamp(2.6rem, 1rem + 6.6vw, 6.9rem);
+  --fs-h2: clamp(1.75rem, 1.15rem + 2.3vw, 3.1rem);
+  --fs-h3: clamp(1.08rem, 1rem + 0.35vw, 1.3rem);
+  --fs-lead: clamp(1.05rem, 1rem + 0.3vw, 1.22rem);
+
+  --gutter: clamp(1rem, 4vw, 2.5rem);
+  --max: 1240px;
+  --section-y: clamp(5rem, 3rem + 7vw, 9.5rem);
+  --radius: 6px;
+  --chamfer: 14px;
+  --ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+
+/* ——— Reset ——— */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 88px;
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--night);
+  color: var(--star);
+  font-family: var(--font-body);
+  font-size: 1.0625rem;
+  line-height: 1.6;
+  font-feature-settings: 'ss01';
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  overflow-x: hidden;
+}
+
+body.menu-open {
+  overflow: hidden;
+}
+
+img,
+svg {
+  display: block;
+  max-width: 100%;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+ul,
+ol,
+dl,
+dd,
+figure,
+blockquote {
+  margin: 0;
+}
+
+ul,
+ol {
+  padding: 0;
+  list-style: none;
+}
+
+a {
+  color: inherit;
+  text-decoration-thickness: 1px;
+  text-underline-offset: 0.2em;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--signal);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+::selection {
+  background: var(--signal);
+  color: var(--night);
+}
+
+/* ——— Utilitaires ——— */
+.wrap {
+  width: 100%;
+  max-width: var(--max);
+  margin-inline: auto;
+  padding-inline: var(--gutter);
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip {
+  position: absolute;
+  top: -100px;
+  left: 1rem;
+  z-index: 100;
+  padding: 0.75rem 1rem;
+  background: var(--signal);
+  color: var(--night);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip:focus {
+  top: 1rem;
+}
+
+/* ——— Typographie ——— */
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  text-wrap: balance;
+}
+
+h2 {
+  font-size: var(--fs-h2);
+  line-height: 1.1;
+  font-weight: 400;
+}
+
+h3 {
+  font-size: var(--fs-h3);
+  line-height: 1.25;
+}
+
+p {
+  text-wrap: pretty;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.4rem;
+  font-family: var(--font-mono);
+  font-size: 0.76rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--signal);
+}
+
+.eyebrow::before {
+  content: '';
+  width: 11px;
+  height: 11px;
+  background: currentColor;
+  clip-path: polygon(50% 0, 60% 40%, 100% 50%, 60% 60%, 50% 100%, 40% 60%, 0 50%, 40% 40%);
+}
+
+.lead {
+  margin-top: 1.4rem;
+  max-width: 34em;
+  font-size: var(--fs-lead);
+  line-height: 1.6;
+  color: var(--haze);
+}
+
+.section {
+  position: relative;
+  padding-block: var(--section-y);
+}
+
+.section-head {
+  max-width: 44rem;
+}
+
+/* ——— Boutons ——— */
+.btn {
+  --btn-bg: var(--signal);
+  --btn-fg: var(--night);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  min-height: 3.1rem;
+  padding: 0.85rem 1.6rem;
+  border: 0;
+  background: var(--btn-bg);
+  color: var(--btn-fg);
+  font-weight: 600;
+  font-size: 0.98rem;
+  letter-spacing: 0.005em;
+  text-decoration: none;
+  cursor: pointer;
+  /* Coin biseauté, repris des terminaisons en diagonale du logo. */
+  clip-path: polygon(0 0, calc(100% - var(--chamfer)) 0, 100% var(--chamfer), 100% 100%, 0 100%);
+  transition: background-color 0.25s var(--ease), color 0.25s var(--ease), transform 0.25s var(--ease);
+}
+
+.btn:hover {
+  --btn-bg: var(--star);
+}
+
+.btn:active {
+  transform: translateY(1px);
+}
+
+.btn:focus-visible {
+  outline-offset: 4px;
+  clip-path: none;
+}
+
+.btn[disabled] {
+  opacity: 0.6;
+  cursor: progress;
+}
+
+.btn-ghost {
+  --btn-bg: transparent;
+  --btn-fg: var(--star);
+  box-shadow: inset 0 0 0 1px rgba(242, 244, 250, 0.26);
+  clip-path: none;
+}
+
+.btn-ghost:hover {
+  --btn-bg: rgba(242, 244, 250, 0.08);
+}
+
+.btn-small {
+  min-height: 2.6rem;
+  padding: 0.55rem 1.1rem;
+  font-size: 0.9rem;
+  --chamfer: 10px;
+}
+
+/* ——— Animations : entrée de page et révélations au scroll ——— */
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes line-up {
+  from {
+    transform: translateY(108%);
+  }
+  to {
+    transform: none;
+  }
+}
+
+.js .load {
+  opacity: 0;
+  animation: rise 0.9s var(--ease) forwards;
+  animation-delay: calc(var(--i, 0) * 110ms + 120ms);
+}
+
+.js .load-line {
+  display: inline-block;
+  transform: translateY(108%);
+  animation: line-up 1.05s var(--ease) forwards;
+  animation-delay: calc(var(--i, 0) * 110ms + 120ms);
+}
+
+.js [data-reveal] {
+  opacity: 0;
+  transform: translateY(22px);
+  transition: opacity 0.9s var(--ease), transform 0.9s var(--ease);
+  transition-delay: calc(var(--d, 0) * 70ms);
+}
+
+.js [data-reveal].is-in {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-delay: 0ms !important;
+    transition-duration: 0.01ms !important;
+    transition-delay: 0ms !important;
+  }
+
+  .js .load,
+  .js .load-line,
+  .js [data-reveal] {
+    opacity: 1;
+    transform: none;
+  }
+}

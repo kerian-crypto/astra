@@ -1,0 +1,89 @@
+.faq {
+  background: var(--mist);
+  color: var(--ink);
+}
+
+.faq-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(2.5rem, 6vw, 6rem);
+  align-items: start;
+}
+
+.faq details {
+  border-top: 1px solid var(--line-light);
+}
+
+.faq details:last-child {
+  border-bottom: 1px solid var(--line-light);
+}
+
+.faq summary {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1.5rem;
+  padding: 1.5rem 0;
+  cursor: pointer;
+  list-style: none;
+}
+
+.faq summary::-webkit-details-marker {
+  display: none;
+}
+
+.faq summary h3 {
+  font-family: var(--font-body);
+  font-size: 1.1rem;
+  font-weight: 500;
+  letter-spacing: 0;
+  line-height: 1.45;
+}
+
+.faq summary:hover h3 {
+  color: var(--indigo-ink);
+}
+
+.faq-icon {
+  position: relative;
+  flex-shrink: 0;
+  width: 14px;
+  height: 14px;
+  margin-top: 0.4em;
+}
+
+.faq-icon::before,
+.faq-icon::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 1.5px;
+  background: currentColor;
+  transition: transform 0.35s var(--ease);
+}
+
+.faq-icon::after {
+  transform: rotate(90deg);
+}
+
+.faq details[open] .faq-icon::after {
+  transform: rotate(0deg);
+}
+
+.faq details p {
+  max-width: 40rem;
+  padding-bottom: 1.6rem;
+  color: var(--slate);
+}
+
+.faq details[open] p {
+  animation: rise 0.45s var(--ease);
+}
+
+@media (max-width: 900px) {
+  .faq-grid {
+    grid-template-columns: 1fr;
+  }
+}

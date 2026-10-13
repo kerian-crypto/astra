@@ -1,0 +1,88 @@
+.site-footer {
+  background: var(--night);
+  border-top: 1px solid var(--line-dark);
+  padding-top: clamp(3.5rem, 7vw, 5.5rem);
+}
+
+.footer-inner {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr);
+  gap: 2.5rem;
+}
+
+.footer-brand .wordmark {
+  width: auto;
+  height: 38px;
+}
+
+.footer-sign {
+  margin-top: 1.6rem;
+  font-family: var(--font-display);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  color: var(--haze);
+}
+
+.footer-nav {
+  display: grid;
+  align-content: start;
+  gap: 0.7rem;
+}
+
+.footer-nav a,
+.footer-meta a {
+  color: var(--haze);
+  text-decoration: none;
+  transition: color 0.2s var(--ease);
+}
+
+.footer-nav a:hover,
+.footer-meta a:hover {
+  color: var(--star);
+}
+
+.footer-meta {
+  overflow-wrap: anywhere;
+  display: grid;
+  align-content: start;
+  gap: 1rem;
+  color: var(--haze);
+}
+
+.footer-base {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.8rem 2rem;
+  margin-top: clamp(3rem, 6vw, 4.5rem);
+  padding-block: 1.5rem 2rem;
+  border-top: 1px solid var(--line-dark);
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  letter-spacing: 0.06em;
+  color: var(--haze);
+}
+
+.footer-legal {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1.25rem;
+}
+
+.footer-legal a {
+  color: var(--haze);
+  text-decoration: none;
+  transition: color 0.2s var(--ease);
+}
+
+.footer-legal a:hover {
+  color: var(--star);
+}
+
+@media (max-width: 760px) {
+  .footer-inner {
+    grid-template-columns: 1fr;
+  }
+}

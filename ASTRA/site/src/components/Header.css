@@ -1,0 +1,151 @@
+.scroll-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: 24px;
+  pointer-events: none;
+}
+
+.site-header {
+  position: fixed;
+  inset: 0 0 auto;
+  z-index: 50;
+  transition: background-color 0.35s var(--ease), box-shadow 0.35s var(--ease);
+}
+
+.site-header.is-scrolled {
+  background: rgba(7, 11, 24, 0.94);
+  backdrop-filter: blur(14px) saturate(140%);
+  -webkit-backdrop-filter: blur(14px) saturate(140%);
+  box-shadow: 0 1px 0 var(--line-dark);
+}
+
+.header-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  height: 76px;
+}
+
+.brand {
+  flex-shrink: 0;
+  position: relative;
+  z-index: 2;
+}
+
+.brand .wordmark {
+  width: auto;
+  height: 30px;
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  gap: clamp(1rem, 2.2vw, 2rem);
+}
+
+.nav a:not(.btn) {
+  position: relative;
+  font-size: 0.93rem;
+  color: var(--haze);
+  text-decoration: none;
+  transition: color 0.2s var(--ease);
+}
+
+.nav a:not(.btn)::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -6px;
+  height: 1px;
+  background: var(--signal);
+  transform: scaleX(0);
+  transform-origin: left;
+  transition: transform 0.35s var(--ease);
+}
+
+.nav a:not(.btn):hover,
+.nav a:not(.btn).is-active {
+  color: var(--star);
+}
+
+.nav a:not(.btn):hover::after,
+.nav a:not(.btn).is-active::after {
+  transform: scaleX(1);
+}
+
+.menu-toggle {
+  display: none;
+  position: relative;
+  z-index: 2;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.menu-bar {
+  position: absolute;
+  left: 11px;
+  right: 11px;
+  height: 1.5px;
+  background: var(--star);
+  transition: transform 0.35s var(--ease);
+}
+
+.menu-bar:nth-of-type(2) {
+  top: 18px;
+}
+
+.menu-bar:nth-of-type(3) {
+  top: 25px;
+}
+
+@media (max-width: 960px) {
+  .menu-toggle {
+    display: block;
+  }
+
+  .nav {
+    position: fixed;
+    inset: 0;
+    flex-direction: column;
+    align-items: flex-start;
+    justify-content: center;
+    gap: 1.4rem;
+    padding: 6rem var(--gutter) 3rem;
+    background: var(--night);
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.35s var(--ease), visibility 0s linear 0.35s;
+  }
+
+  .nav a:not(.btn) {
+    font-family: var(--font-display);
+    font-size: clamp(1.5rem, 6vw, 2.2rem);
+    color: var(--star);
+  }
+
+  .nav .btn {
+    margin-top: 1rem;
+  }
+
+  .is-open .nav {
+    opacity: 1;
+    visibility: visible;
+    transition: opacity 0.35s var(--ease);
+  }
+
+  .is-open .menu-bar:nth-of-type(2) {
+    transform: translateY(3.5px) rotate(45deg);
+  }
+
+  .is-open .menu-bar:nth-of-type(3) {
+    transform: translateY(-3.5px) rotate(-45deg);
+  }
+}

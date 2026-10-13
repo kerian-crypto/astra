@@ -1,0 +1,87 @@
+.vision {
+  background:
+    radial-gradient(60rem 30rem at 85% 0%, rgba(79, 91, 242, 0.14), transparent 70%),
+    var(--night-2);
+}
+
+.vision-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: end;
+}
+
+.vision-body {
+  display: grid;
+  gap: 1.1rem;
+  color: var(--haze);
+  font-size: var(--fs-lead);
+}
+
+.manifesto {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0 clamp(0.8rem, 2vw, 1.8rem);
+  margin-top: clamp(5rem, 11vw, 9rem);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 0.9rem + 5.2vw, 5.6rem);
+  font-weight: 500;
+  line-height: 1.08;
+  letter-spacing: -0.04em;
+}
+
+.manifesto span[aria-hidden] {
+  color: rgba(151, 162, 196, 0.18);
+  transition: color 0.6s var(--ease);
+}
+
+.manifesto span.is-lit {
+  color: var(--star);
+}
+
+.reach {
+  max-width: 38rem;
+  margin-top: clamp(4rem, 8vw, 6rem);
+  margin-left: auto;
+  font-size: clamp(1.15rem, 1rem + 0.6vw, 1.45rem);
+  line-height: 1.5;
+  color: var(--star);
+}
+
+.join {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 2rem;
+  margin-top: clamp(4rem, 8vw, 6rem);
+  padding: clamp(1.6rem, 3vw, 2.4rem);
+  background: rgba(7, 11, 24, 0.6);
+  border: 1px solid var(--line-dark);
+  border-radius: var(--radius);
+}
+
+.join h3 {
+  font-size: clamp(1.15rem, 1rem + 0.6vw, 1.5rem);
+  font-weight: 400;
+}
+
+.join p {
+  max-width: 42rem;
+  margin-top: 0.7rem;
+  color: var(--haze);
+}
+
+.join .btn {
+  flex-shrink: 0;
+}
+
+@media (max-width: 820px) {
+  .vision-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .join {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

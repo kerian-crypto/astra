@@ -1,0 +1,66 @@
+.terrain {
+  background: linear-gradient(180deg, var(--night) 0%, var(--night-2) 100%);
+}
+
+.terrain-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) minmax(0, 7fr);
+  gap: clamp(3rem, 6vw, 6rem);
+  align-items: start;
+}
+
+.terrain-head {
+  position: sticky;
+  top: 120px;
+}
+
+.reality {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 1rem 2.5rem;
+  padding: 1.9rem 0;
+  border-top: 1px solid var(--line-dark);
+}
+
+.reality:last-child {
+  border-bottom: 1px solid var(--line-dark);
+}
+
+.reality dt {
+  font-size: 1.12rem;
+  font-weight: 500;
+  line-height: 1.45;
+  color: var(--star);
+}
+
+.reality dd {
+  position: relative;
+  padding-left: 1.6rem;
+  color: var(--haze);
+}
+
+.reality dd::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0.8em;
+  width: 0.9rem;
+  height: 1px;
+  background: var(--signal);
+}
+
+@media (max-width: 900px) {
+  .terrain-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .terrain-head {
+    position: static;
+  }
+}
+
+@media (max-width: 560px) {
+  .reality {
+    grid-template-columns: 1fr;
+  }
+}
