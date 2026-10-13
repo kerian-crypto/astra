@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'package:astra_client/core/layout/breakpoints.dart';
 import 'package:astra_client/core/layout/page_frame.dart';
+import 'package:astra_client/core/network/api_exception.dart';
 import 'package:astra_client/core/theme/client_theme.dart';
 import 'package:astra_client/core/utils/formatting.dart';
 import 'package:astra_client/core/widgets/state_views.dart';
@@ -351,9 +352,107 @@ class _SecurityScreenState extends ConsumerState<SecurityScreen> {
               icon: const Icon(Icons.logout_rounded),
               label: const Text('Se déconnecter'),
             ),
+            const SectionHeader('Compte'),
+            Text(
+              'La suppression efface votre profil et vos accès. Les factures et les échanges liés '
+              'aux projets de votre entreprise sont conservés selon notre politique de confidentialité.',
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+            const SizedBox(height: Space.md),
+            OutlinedButton.icon(
+              style: OutlinedButton.styleFrom(foregroundColor: Theme.of(context).colorScheme.error),
+              onPressed: () =>
+                  showDialog<void>(context: context, builder: (_) => const DeleteAccountDialog()),
+              icon: const Icon(Icons.delete_forever_outlined),
+              label: const Text('Supprimer mon compte'),
+            ),
           ],
         ),
       ),
+    );
+  }
+}
+
+/// Confirmation de la suppression du compte (exigence Google Play) : le mot
+/// de passe est redemandé, l'erreur reste affichée dans la boîte de dialogue.
+class DeleteAccountDialog extends ConsumerStatefulWidget {
+  const DeleteAccountDialog({super.key});
+
+  @override
+  ConsumerState<DeleteAccountDialog> createState() => _DeleteAccountDialogState();
+}
+
+class _DeleteAccountDialogState extends ConsumerState<DeleteAccountDialog> {
+  final _password = TextEditingController();
+  bool _deleting = false;
+  String? _error;
+
+  @override
+  void dispose() {
+    _password.dispose();
+    super.dispose();
+  }
+
+  Future<void> _delete() async {
+    if (_password.text.isEmpty) {
+      setState(() => _error = 'Saisissez votre mot de passe.');
+      return;
+    }
+    setState(() {
+      _deleting = true;
+      _error = null;
+    });
+    // Lu avant la fermeture : `ref` n'est plus utilisable une fois la boîte fermée.
+    final auth = ref.read(authControllerProvider.notifier);
+    try {
+      await ref.read(profileRepositoryProvider).deleteAccount(password: _password.text);
+      if (mounted) Navigator.of(context).pop();
+      await auth.accountDeleted();
+    } on ApiException catch (error) {
+      if (mounted) {
+        setState(() {
+          _deleting = false;
+          _error = error.message;
+        });
+      }
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final error = Theme.of(context).colorScheme.error;
+    return AlertDialog(
+      icon: Icon(Icons.warning_amber_rounded, color: error, size: 36),
+      title: const Text('Supprimer votre compte ?'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'La suppression est définitive : vous ne pourrez plus vous connecter et votre profil '
+            'sera effacé. Confirmez avec votre mot de passe.',
+          ),
+          const SizedBox(height: Space.lg),
+          TextField(
+            controller: _password,
+            obscureText: true,
+            enabled: !_deleting,
+            decoration: InputDecoration(labelText: 'Mot de passe', errorText: _error),
+            onSubmitted: (_) => _delete(),
+          ),
+        ],
+      ),
+      actions: [
+        TextButton(
+          onPressed: _deleting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Annuler'),
+        ),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: error),
+          onPressed: _deleting ? null : _delete,
+          child: const Text('Supprimer définitivement'),
+        ),
+      ],
     );
   }
 }

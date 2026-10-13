@@ -1,0 +1,6 @@
+<!-- Fusionné uniquement dans les APK release distribués hors Play Store :
+     mises à jour publiées par le serveur Astra, ouverture de l'installeur
+     Android confirmée par l'utilisateur. Interdit sur Google Play. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+</manifest>

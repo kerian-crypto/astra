@@ -101,6 +101,14 @@ class AuthController extends AsyncNotifier<ClientSession?> {
     state = const AsyncData(null);
   }
 
+  /// Le serveur a déjà supprimé le compte : on oublie tout localement.
+  Future<void> accountDeleted() async {
+    await ref.read(pushServiceProvider).forgetDevice();
+    await _repository.logout();
+    ref.read(sessionNoticeProvider.notifier).show('Votre compte a été supprimé.');
+    state = const AsyncData(null);
+  }
+
   void setSession(ClientSession session) => state = AsyncData(session);
 
   Future<void> refresh() async {

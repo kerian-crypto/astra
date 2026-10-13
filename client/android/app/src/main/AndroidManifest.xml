@@ -1,8 +1,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
     <uses-permission android:name="android.permission.INTERNET"/>
-    <!-- Mises à jour publiées par le serveur Astra (hors Play Store) :
-         ouverture de l'installeur Android, confirmée par l'utilisateur. -->
-    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES"/>
+    <!-- REQUEST_INSTALL_PACKAGES n'est ajoutée qu'aux APK distribués hors
+         Play Store (src/sideload/AndroidManifest.xml, voir build.gradle.kts). -->
     <!-- Notifications push (Android 13+ : autorisation demandée à la connexion). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
     <application

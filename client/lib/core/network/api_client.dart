@@ -110,4 +110,7 @@ class Api {
       });
 
   Future<void> put(String path, {Object? data}) => guardApi(() => _dio.put<void>(path, data: data));
+
+  Future<void> delete(String path, {Object? data}) =>
+      guardApi(() => _dio.delete<void>(path, data: data));
 }

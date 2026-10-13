@@ -41,10 +41,13 @@ class AstraClientApp extends ConsumerWidget {
       supportedLocales: const [Locale('fr')],
       localizationsDelegates: GlobalMaterialLocalizations.delegates,
       routerConfig: router,
-      builder: (_, child) => UpdateGate(
-        navigatorKey: router.routerDelegate.navigatorKey,
-        child: child ?? const SizedBox.shrink(),
-      ),
+      // Version Play : les mises à jour passent par le Store, jamais par un APK.
+      builder: (_, child) => AppConfig.isPlayStoreBuild
+          ? child ?? const SizedBox.shrink()
+          : UpdateGate(
+              navigatorKey: router.routerDelegate.navigatorKey,
+              child: child ?? const SizedBox.shrink(),
+            ),
     );
   }
 }

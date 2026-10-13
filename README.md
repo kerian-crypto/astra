@@ -87,6 +87,27 @@ Une build release exige une URL `https://` (vérifié au démarrage).
 L'icône de l'application est le « A » du logo Astra (`mobile/assets/branding/`).
 Après modification : `dart run flutter_launcher_icons`.
 
+### Astra Client : deux distributions Android
+
+```bash
+cd client
+API=https://astra.digital-get.com/api/v1
+
+# Google Play : bundle signé avec la clé d'envoi (android/key.properties),
+# sans mise à jour par APK ni permission REQUEST_INSTALL_PACKAGES.
+flutter build appbundle --release --dart-define=API_BASE_URL=$API --dart-define=DISTRIBUTION=play
+
+# APK publié par le serveur (infra/aws/publish-release.sh) : clé de debug,
+# la même que les versions déjà installées, et mises à jour intégrées.
+flutter build apk --release --dart-define=API_BASE_URL=$API
+```
+
+Incrémenter le `+N` de `version:` dans `client/pubspec.yaml` avant chaque envoi
+sur Play. La clé d'envoi (`~/.android-keys/astra-client-upload.jks`) et
+`client/android/key.properties` ne sont jamais versionnés : les sauvegarder
+dans un coffre, sans eux plus aucune mise à jour Play n'est possible avant
+une réinitialisation de clé auprès de Google.
+
 ## Développement backend
 
 ```bash

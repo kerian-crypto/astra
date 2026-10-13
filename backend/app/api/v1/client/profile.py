@@ -1,7 +1,8 @@
 from fastapi import APIRouter, status
 from fastapi.responses import FileResponse
 
-from app.api.deps import CurrentClient, DbSession, PhotoStorage
+from app.api.deps import CurrentClient, DbSession, LoginLimiter, PhotoStorage, Storage
+from app.schemas.client.auth import AccountDeleteRequest
 from app.schemas.client.company import (
     CompanyClientUpdate,
     CompanyUserView,
@@ -10,8 +11,9 @@ from app.schemas.client.company import (
     MeView,
 )
 from app.schemas.device import DeviceRegister, DeviceUnregister
-from app.services.client import accounts, dashboard, devices
-from app.services.errors import NotFoundError
+from app.services.auth_service import TOO_MANY_ATTEMPTS
+from app.services.client import account_deletion, accounts, dashboard, devices
+from app.services.errors import NotFoundError, RateLimitedError
 from app.services.registration_service import photo_content_type
 
 router = APIRouter(tags=["client-profile"])
@@ -34,6 +36,26 @@ def read_me(account: CurrentClient) -> MeView:
 @router.patch("/me", response_model=MeView)
 def update_me(body: MeUpdate, account: CurrentClient, db: DbSession) -> MeView:
     return me_view(accounts.update_me(db, account, body))
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_me(
+    body: AccountDeleteRequest,
+    account: CurrentClient,
+    db: DbSession,
+    storage: Storage,
+    photo_storage: PhotoStorage,
+    limiter: LoginLimiter,
+) -> None:
+    """Suppression définitive du compte connecté (Google Play l'exige dans l'app)."""
+    key = f"client-delete:{account.id}"
+    if limiter.is_blocked(key):
+        raise RateLimitedError(TOO_MANY_ATTEMPTS)
+    try:
+        account_deletion.delete_own_account(db, account, body.password, storage, photo_storage)
+    except account_deletion.WrongPasswordError:
+        limiter.record_failure(key)
+        raise
 
 
 @router.get("/company", response_model=CompanyView)

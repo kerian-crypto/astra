@@ -1,3 +1,6 @@
+import java.util.Base64
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
@@ -11,6 +14,23 @@ if (file("google-services.json").exists()) {
     apply(plugin = "com.google.gms.google-services")
 } else {
     logger.warn("google-services.json absent : notifications push désactivées.")
+}
+
+// Les --dart-define arrivent en base64 dans la propriété « dart-defines ».
+// DISTRIBUTION=play : build Google Play (bundle .aab signé avec la clé d'envoi).
+val dartDefines: Map<String, String> = (project.findProperty("dart-defines") as String?)
+    .orEmpty()
+    .split(",")
+    .filter { it.isNotBlank() }
+    .map { String(Base64.getDecoder().decode(it)) }
+    .filter { it.contains("=") }
+    .associate { it.substringBefore("=") to it.substringAfter("=") }
+val isPlayStoreBuild = dartDefines["DISTRIBUTION"] == "play"
+
+// Clé d'envoi Google Play (Play App Signing) : android/key.properties, jamais versionné.
+val uploadKeyFile = rootProject.file("key.properties")
+val uploadKey = Properties().apply {
+    if (uploadKeyFile.exists()) uploadKeyFile.inputStream().use { load(it) }
 }
 
 android {
@@ -37,12 +57,35 @@ android {
         versionName = flutter.versionName
     }
 
+    signingConfigs {
+        if (uploadKeyFile.exists()) {
+            create("upload") {
+                storeFile = file(uploadKey.getProperty("storeFile"))
+                storePassword = uploadKey.getProperty("storePassword")
+                keyAlias = uploadKey.getProperty("keyAlias")
+                keyPassword = uploadKey.getProperty("keyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
-            // TODO: Add your own signing config for the release build.
-            // Signing with the debug keys for now, so `flutter run --release` works.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = if (isPlayStoreBuild) {
+                if (!uploadKeyFile.exists()) {
+                    throw GradleException("Build Play : android/key.properties manquant (clé d'envoi).")
+                }
+                signingConfigs.getByName("upload")
+            } else {
+                // APK distribués par le serveur Astra : même clé que les versions
+                // déjà installées, sinon Android refuserait leurs mises à jour.
+                signingConfigs.getByName("debug")
+            }
         }
+    }
+
+    // Hors Play Store seulement : permission d'ouvrir l'installeur d'APK.
+    if (!isPlayStoreBuild) {
+        sourceSets.getByName("release").manifest.srcFile("src/sideload/AndroidManifest.xml")
     }
 }
 

@@ -47,3 +47,11 @@ class ClientRegisterRequest(BaseModel):
     phone: str | None = Field(default=None, max_length=40)
     country: str | None = Field(default=None, max_length=80)
     password: Password
+
+
+class AccountDeleteRequest(BaseModel):
+    """Suppression de son propre compte : le mot de passe est redemandé."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    password: str = Field(min_length=1, max_length=MAX_PASSWORD_LENGTH)

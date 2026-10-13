@@ -65,6 +65,10 @@ class ProfileRepository {
     data: {'current_password': current, 'new_password': next},
   );
 
+  /// Suppression définitive du compte connecté ; le mot de passe est redemandé.
+  Future<void> deleteAccount({required String password}) =>
+      _api.delete('/client/me', data: {'password': password});
+
   Future<List<CompanyUser>> companyUsers() =>
       _api.get('/client/company/users', parse: (data) => listOf(data, CompanyUser.fromJson));
 }
